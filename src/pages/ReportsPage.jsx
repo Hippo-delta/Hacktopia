@@ -12,17 +12,13 @@ import {
   ArrowRight
 } from 'lucide-react';
 import RiskBadge from '../components/RiskBadge';
-import { getReports, exportTransactionsCsv, exportAccountsCsv } from '../services/api';
+import { getReports, exportTransactionsCsv, exportAccountsCsv, subscribeToDataChanges } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
 
 export default function ReportsPage({ onNavigateToAccount, onNavigateToTrace }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isGenerated, setIsGenerated] = useState(false);
-
-  useEffect(() => {
-    loadReport();
-  }, []);
 
   const loadReport = async () => {
     try {
@@ -35,6 +31,12 @@ export default function ReportsPage({ onNavigateToAccount, onNavigateToTrace }) 
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadReport();
+    const unsub = subscribeToDataChanges(loadReport);
+    return () => unsub();
+  }, []);
 
   const handlePrint = () => {
     window.print();
@@ -167,14 +169,22 @@ export default function ReportsPage({ onNavigateToAccount, onNavigateToTrace }) 
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-mono">
-                {report.moneyTrailSummary.map((hop) => (
-                  <tr key={hop.hop} className="hover:bg-slate-800/20">
-                    <td className="p-3 font-bold text-indigo-400">Hop {hop.hop}</td>
-                    <td className="p-3 text-white font-semibold">{hop.flow}</td>
-                    <td className="p-3 text-right text-emerald-400 font-bold">{formatCurrency(hop.amount)}</td>
-                    <td className="p-3 text-amber-400 font-sans text-xs">{hop.delay}</td>
+                {report.moneyTrailSummary.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="p-6 text-center text-slate-400 font-sans text-xs">
+                      No illicit money trail detected in active scenario. All transaction flows adhere to legitimate commercial settlements.
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  report.moneyTrailSummary.map((hop) => (
+                    <tr key={hop.hop} className="hover:bg-slate-800/20">
+                      <td className="p-3 font-bold text-indigo-400">Hop {hop.hop}</td>
+                      <td className="p-3 text-white font-semibold">{hop.flow}</td>
+                      <td className="p-3 text-right text-emerald-400 font-bold">{formatCurrency(hop.amount)}</td>
+                      <td className="p-3 text-amber-400 font-sans text-xs">{hop.delay}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -200,18 +210,26 @@ export default function ReportsPage({ onNavigateToAccount, onNavigateToTrace }) 
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-mono">
-                {report.flaggedMules.map((mule) => (
-                  <tr key={mule.id} className="hover:bg-slate-800/20">
-                    <td className="p-3 font-bold text-indigo-400">{mule.id}</td>
-                    <td className="p-3 text-slate-200 font-sans">{mule.name}</td>
-                    <td className="p-3">
-                      <RiskBadge level={mule.level} score={mule.score} size="sm" />
+                {report.flaggedMules.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-6 text-center text-slate-400 font-sans text-xs">
+                      No mule accounts flagged in active scenario. All monitored accounts are operating within standard baseline behavior.
                     </td>
-                    <td className="p-3 text-slate-300">{mule.passThrough}</td>
-                    <td className="p-3 text-amber-400">{mule.delay}</td>
-                    <td className="p-3 font-sans text-[11px] text-slate-300">{mule.status}</td>
                   </tr>
-                ))}
+                ) : (
+                  report.flaggedMules.map((mule) => (
+                    <tr key={mule.id} className="hover:bg-slate-800/20">
+                      <td className="p-3 font-bold text-indigo-400">{mule.id}</td>
+                      <td className="p-3 text-slate-200 font-sans">{mule.name}</td>
+                      <td className="p-3">
+                        <RiskBadge level={mule.level} score={mule.score} size="sm" />
+                      </td>
+                      <td className="p-3 text-slate-300">{mule.passThrough}</td>
+                      <td className="p-3 text-amber-400">{mule.delay}</td>
+                      <td className="p-3 font-sans text-[11px] text-slate-300">{mule.status}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

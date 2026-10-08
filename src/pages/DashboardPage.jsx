@@ -15,7 +15,8 @@ import {
   Briefcase, 
   MapPin, 
   Scale, 
-  Filter 
+  Filter,
+  ShieldCheck
 } from 'lucide-react';
 import KpiCard from '../components/KpiCard';
 import NetworkGraph from '../components/NetworkGraph';
@@ -257,22 +258,30 @@ export default function DashboardPage({
               </div>
 
               <div className="space-y-2">
-                {alerts.slice(0, 4).map((alert) => (
-                  <div
-                    key={alert.id}
-                    onClick={() => onNavigateToAccount(alert.accountId)}
-                    className="p-2.5 rounded-lg bg-dark-950 border border-slate-800/80 hover:border-indigo-500/40 cursor-pointer transition text-xs"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-bold text-white text-[11px]">{alert.accountId}</span>
-                        <RiskBadge level={alert.severity} score={alert.riskScore} size="sm" />
-                      </div>
-                      <span className="text-[10px] text-slate-500 font-mono">{alert.detectedTime}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-300 line-clamp-1">{alert.description}</p>
+                {alerts.length === 0 ? (
+                  <div className="p-4 rounded-lg bg-dark-950 border border-slate-800 text-center flex flex-col items-center justify-center gap-1.5 py-6">
+                    <ShieldCheck className="w-6 h-6 text-emerald-400 mb-1" />
+                    <span className="text-xs font-semibold text-slate-300">No High-Risk Alerts</span>
+                    <p className="text-[11px] text-slate-400">All accounts in the active scenario are operating within normal baseline limits.</p>
                   </div>
-                ))}
+                ) : (
+                  alerts.slice(0, 4).map((alert) => (
+                    <div
+                      key={alert.id}
+                      onClick={() => onNavigateToAccount(alert.accountId)}
+                      className="p-2.5 rounded-lg bg-dark-950 border border-slate-800/80 hover:border-indigo-500/40 cursor-pointer transition text-xs"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-white text-[11px]">{alert.accountId}</span>
+                          <RiskBadge level={alert.severity} score={alert.riskScore} size="sm" />
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-mono">{alert.detectedTime}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 line-clamp-1">{alert.description}</p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -281,7 +290,7 @@ export default function DashboardPage({
                 onClick={onNavigateToAlerts}
                 className="w-full py-2 rounded-lg bg-dark-950 hover:bg-slate-800 text-slate-300 font-medium text-xs border border-slate-800 transition flex items-center justify-center gap-1.5"
               >
-                <span>Review All {alerts.length} Flagged Alerts</span>
+                <span>{alerts.length > 0 ? `Review All ${alerts.length} Flagged Alerts` : 'Open Alerts Center'}</span>
                 <ArrowRight className="w-3 h-3 text-slate-400" />
               </button>
             </div>
