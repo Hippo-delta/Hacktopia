@@ -1,0 +1,19 @@
+{
+  "total_accounts": 218,
+  "total_transactions": 2541,
+  "account_class_breakdown": {
+    "normal": 110,
+    "mule-like": 35,
+    "merchant": 35,
+    "structuring": 22,
+    "victim": 16
+  },
+  "features_count": 24,
+  "next_hop_samples_count": 2217,
+  "split_counts": {
+    "train": 147,
+    "val": 30,
+    "test": 41
+  },
+  "demo_chain_verified": true
+}
