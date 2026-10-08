@@ -36,7 +36,14 @@ def get_flagship_scenario() -> Dict[str, Any]:
             "is_suspicious": 0,
             "communityId": "Community #04",
             "region": "Region C",
-            "status": "Active"
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": None,
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Personal savings & household retail payments",
+            "entity_id": None
         },
         {
             "id": "A102",
@@ -48,7 +55,14 @@ def get_flagship_scenario() -> Dict[str, Any]:
             "is_suspicious": 1,
             "communityId": "Community #17",
             "region": "Region A",
-            "status": "Flagged for Review"
+            "status": "Flagged for Review",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": "unregistered_intermediary",
+            "identity_verification_status": "HIGH_RISK_UNVERIFIED",
+            "expected_activity_profile": "Recently opened account with sudden high-velocity volume spike",
+            "entity_id": None
         },
         {
             "id": "B552",
@@ -60,7 +74,14 @@ def get_flagship_scenario() -> Dict[str, Any]:
             "is_suspicious": 1,
             "communityId": "Community #17",
             "region": "Region A",
-            "status": "Investigating"
+            "status": "Investigating",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": "unregistered_trader",
+            "identity_verification_status": "PENDING_KYC",
+            "expected_activity_profile": "Layer 2 conduit account with negligible balance retention",
+            "entity_id": None
         },
         {
             "id": "C771",
@@ -72,7 +93,14 @@ def get_flagship_scenario() -> Dict[str, Any]:
             "is_suspicious": 1,
             "communityId": "Community #17",
             "region": "Region A",
-            "status": "Investigating"
+            "status": "Investigating",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": "unregistered_proxy",
+            "identity_verification_status": "PENDING_KYC",
+            "expected_activity_profile": "Layer 3 shell entity with rapid turnaround transfers",
+            "entity_id": None
         },
         {
             "id": "D334",
@@ -84,7 +112,14 @@ def get_flagship_scenario() -> Dict[str, Any]:
             "is_suspicious": 1,
             "communityId": "Community #17",
             "region": "Region A",
-            "status": "Critical Review"
+            "status": "Critical Review",
+            "business_registered": True,
+            "gstin_present": True,
+            "gstin_number": "07AAACD9981F1Z2",
+            "business_category": "bullion_precious_metals",
+            "identity_verification_status": "VERIFIED_BUSINESS",
+            "expected_activity_profile": "High-value bullion trading with sudden suspicious incoming layering deposits",
+            "entity_id": "ENTITY-BULLION-01"
         },
         {
             "id": "E889",
@@ -92,11 +127,18 @@ def get_flagship_scenario() -> Dict[str, Any]:
             "accountType": "Virtual Escrow",
             "accountAgeDays": 12,
             "currentBalance": 500.0,
-            "behavior_class": "mule-like",
+            "behavior_class": "cashout",
             "is_suspicious": 1,
             "communityId": "Community #17",
             "region": "Region B",
-            "status": "Under Surveillance"
+            "status": "Under Surveillance",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": "remittance_offramp",
+            "identity_verification_status": "HIGH_RISK_UNVERIFIED",
+            "expected_activity_profile": "Terminal cashout aggregator with offshore wire dispersal",
+            "entity_id": None
         },
         # --- Benign Context Accounts ---
         {
@@ -109,7 +151,14 @@ def get_flagship_scenario() -> Dict[str, Any]:
             "is_suspicious": 0,
             "communityId": "Community #01",
             "region": "Region C",
-            "status": "Active"
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": None,
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Individual retail banking & domestic utility payments",
+            "entity_id": None
         },
         {
             "id": "NORM-02",
@@ -121,7 +170,14 @@ def get_flagship_scenario() -> Dict[str, Any]:
             "is_suspicious": 0,
             "communityId": "Community #01",
             "region": "Region C",
-            "status": "Active"
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": None,
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Monthly payroll receipts & household discretionary spending",
+            "entity_id": None
         },
         {
             "id": "MERCH-01",
@@ -133,7 +189,14 @@ def get_flagship_scenario() -> Dict[str, Any]:
             "is_suspicious": 0,
             "communityId": "Community #02",
             "region": "Region B",
-            "status": "Active"
+            "status": "Active",
+            "business_registered": True,
+            "gstin_present": True,
+            "gstin_number": "27AABCM8890A1Z5",
+            "business_category": "retail_groceries",
+            "identity_verification_status": "VERIFIED_BUSINESS",
+            "expected_activity_profile": "Continuous micro-collections with bulk supplier reconciliations",
+            "entity_id": "ENTITY-METRO-01"
         }
     ]
 
@@ -331,6 +394,578 @@ def get_flagship_scenario() -> Dict[str, Any]:
         "narrative": "Digital Arrest scam: ₹75,000 victim funds routed across 4 rapid mule hops to virtual escrow within 13 minutes.",
         "starting_transaction_id": "TXN-84921",
         "starting_account_id": "A102",
+        "accounts": accounts,
+        "transactions": transactions
+    }
+
+
+def get_baseline_legitimate_scenario() -> Dict[str, Any]:
+    """
+    Scenario 1: Baseline Legitimate Commercial & Individual Banking.
+    Demonstrates:
+    1. High-activity legitimate individual (salary + freelance + rental) -> personal spending.
+       HIGH TRANSACTION ACTIVITY != AUTOMATIC MULE.
+    2. Legitimate multi-account merchant (Entity ID: ENTITY-APEX-01) with internal treasury sweeps.
+    3. Normal business B2B invoice reconciliations with established counterparties and 24-48h delays.
+    Total: 8 accounts, 12 transactions, ~2-3 modular communities.
+    """
+    base_t = BASE_EPOCH
+
+    accounts = [
+        # --- Legitimate Multi-Account Merchant (Entity: ENTITY-APEX-01) ---
+        {
+            "id": "MCH-APEX-01",
+            "name": "Apex Electronics Ltd (Primary Collections)",
+            "accountType": "Commercial Current",
+            "accountAgeDays": 920,
+            "currentBalance": 345000.0,
+            "behavior_class": "merchant",
+            "is_suspicious": 0,
+            "communityId": "Community #11",
+            "region": "Region B",
+            "status": "Active",
+            "business_registered": True,
+            "gstin_present": True,
+            "gstin_number": "29AABCA1234F1Z5",
+            "business_category": "consumer_electronics",
+            "identity_verification_status": "VERIFIED_BUSINESS",
+            "expected_activity_profile": "High volume retail customer sales with batch sweeps to operating treasury",
+            "entity_id": "ENTITY-APEX-01"
+        },
+        {
+            "id": "MCH-APEX-02",
+            "name": "Apex Electronics Ltd (Operating Treasury)",
+            "accountType": "Corporate Current",
+            "accountAgeDays": 915,
+            "currentBalance": 620000.0,
+            "behavior_class": "merchant",
+            "is_suspicious": 0,
+            "communityId": "Community #11",
+            "region": "Region B",
+            "status": "Active",
+            "business_registered": True,
+            "gstin_present": True,
+            "gstin_number": "29AABCA1234F1Z5",
+            "business_category": "consumer_electronics",
+            "identity_verification_status": "VERIFIED_BUSINESS",
+            "expected_activity_profile": "Internal corporate treasury sweeps, supplier NEFTs & payroll",
+            "entity_id": "ENTITY-APEX-01"
+        },
+        # --- High-Activity Legitimate Individual Edge Case ---
+        {
+            "id": "INDIV-01",
+            "name": "Dr. Vikram Malhotra (Consultant & Landlord)",
+            "accountType": "Savings Account",
+            "accountAgeDays": 1450,
+            "currentBalance": 182000.0,
+            "behavior_class": "normal",
+            "is_suspicious": 0,
+            "communityId": "Community #12",
+            "region": "Region A",
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": "consultant_individual",
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Multiple inflows (Hospital retainer + rental income + consulting) with domestic outflows",
+            "entity_id": None
+        },
+        # --- Corporate Counterparties & Customers ---
+        {
+            "id": "SUPP-01",
+            "name": "Silicon Semiconductor Wholesalers",
+            "accountType": "Commercial Current",
+            "accountAgeDays": 1200,
+            "currentBalance": 490000.0,
+            "behavior_class": "normal",
+            "communityId": "Community #11",
+            "region": "Region B",
+            "status": "Active",
+            "business_registered": True,
+            "gstin_present": True,
+            "gstin_number": "27AAACW5566K1Z9",
+            "business_category": "wholesale_components",
+            "identity_verification_status": "VERIFIED_BUSINESS",
+            "expected_activity_profile": "B2B vendor billing and raw material consignments",
+            "entity_id": "ENTITY-SILICON-01"
+        },
+        {
+            "id": "CUST-01",
+            "name": "Ananya Roy (Retail Customer)",
+            "accountType": "Savings Account",
+            "accountAgeDays": 680,
+            "currentBalance": 42000.0,
+            "behavior_class": "normal",
+            "communityId": "Community #11",
+            "region": "Region B",
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": None,
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Household consumer purchases",
+            "entity_id": None
+        },
+        {
+            "id": "CUST-02",
+            "name": "Rohan Deshmukh (Retail Customer)",
+            "accountType": "Savings Account",
+            "accountAgeDays": 510,
+            "currentBalance": 31500.0,
+            "behavior_class": "normal",
+            "communityId": "Community #11",
+            "region": "Region B",
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": None,
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Household consumer purchases",
+            "entity_id": None
+        },
+        {
+            "id": "PAYER-01",
+            "name": "Apollo Healthcare Group (Employer)",
+            "accountType": "Corporate Current",
+            "accountAgeDays": 2200,
+            "currentBalance": 2400000.0,
+            "behavior_class": "normal",
+            "communityId": "Community #12",
+            "region": "Region A",
+            "status": "Active",
+            "business_registered": True,
+            "gstin_present": True,
+            "gstin_number": "06AAACA1122D1Z4",
+            "business_category": "healthcare_provider",
+            "identity_verification_status": "VERIFIED_BUSINESS",
+            "expected_activity_profile": "Corporate payroll and professional doctor disbursements",
+            "entity_id": "ENTITY-APOLLO-01"
+        },
+        {
+            "id": "TENANT-01",
+            "name": "Kavita Nair (Tenant)",
+            "accountType": "Salary Account",
+            "accountAgeDays": 740,
+            "currentBalance": 56000.0,
+            "behavior_class": "normal",
+            "communityId": "Community #12",
+            "region": "Region A",
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": None,
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Monthly rent and domestic living expenses",
+            "entity_id": None
+        }
+    ]
+
+    transactions = [
+        # Customer retail purchases to Primary Collections
+        {
+            "id": "TXN-LEG-01",
+            "fromAccount": "CUST-01",
+            "toAccount": "MCH-APEX-01",
+            "amount": 28500.0,
+            "timestamp": "2026-10-08 09:30 AM",
+            "timeEpoch": base_t - 7200,
+            "channel": "UPI",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Retail electronics purchase invoice #INV-4401",
+            "isScamTrail": False
+        },
+        {
+            "id": "TXN-LEG-02",
+            "fromAccount": "CUST-02",
+            "toAccount": "MCH-APEX-01",
+            "amount": 42000.0,
+            "timestamp": "2026-10-08 10:15 AM",
+            "timeEpoch": base_t - 5400,
+            "channel": "UPI",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Home appliance purchase invoice #INV-4402",
+            "isScamTrail": False
+        },
+        # Same-Entity Treasury Sweep (Internal Liquidity Transfer)
+        {
+            "id": "TXN-LEG-03",
+            "fromAccount": "MCH-APEX-01",
+            "toAccount": "MCH-APEX-02",
+            "amount": 65000.0,
+            "timestamp": "2026-10-08 11:30 AM",
+            "timeEpoch": base_t - 1800,
+            "channel": "NEFT",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Internal treasury sweep: daily collections consolidated to operating account (ENTITY-APEX-01)",
+            "isScamTrail": False
+        },
+        # Supplier B2B settlement with 24-48h natural commercial turnaround
+        {
+            "id": "TXN-LEG-04",
+            "fromAccount": "MCH-APEX-02",
+            "toAccount": "SUPP-01",
+            "amount": 125000.0,
+            "timestamp": "2026-10-08 01:00 PM",
+            "timeEpoch": base_t + 3600,
+            "channel": "RTGS",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "B2B invoice settlement PO-88902 with verified GSTIN counterparty",
+            "isScamTrail": False
+        },
+        # Dr. Vikram Malhotra: Inflow 1 - Hospital Professional Consultation
+        {
+            "id": "TXN-LEG-05",
+            "fromAccount": "PAYER-01",
+            "toAccount": "INDIV-01",
+            "amount": 85000.0,
+            "timestamp": "2026-10-08 08:30 AM",
+            "timeEpoch": base_t - 9000,
+            "channel": "NEFT",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Monthly clinical consulting retainer fee",
+            "isScamTrail": False
+        },
+        # Dr. Vikram Malhotra: Inflow 2 - Apartment Rental Inflow
+        {
+            "id": "TXN-LEG-06",
+            "fromAccount": "TENANT-01",
+            "toAccount": "INDIV-01",
+            "amount": 32000.0,
+            "timestamp": "2026-10-08 09:00 AM",
+            "timeEpoch": base_t - 7800,
+            "channel": "UPI",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Monthly residential apartment rent for flat 4B",
+            "isScamTrail": False
+        },
+        # Dr. Vikram Malhotra: Personal Outflow - Family & Household Support
+        {
+            "id": "TXN-LEG-07",
+            "fromAccount": "INDIV-01",
+            "toAccount": "CUST-01",
+            "amount": 15000.0,
+            "timestamp": "2026-10-08 02:30 PM",
+            "timeEpoch": base_t + 9000,
+            "channel": "UPI",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Reimbursement for family medical diagnostic tests",
+            "isScamTrail": False
+        },
+        # Additional historical business transactions establishing low-risk graph topology
+        {
+            "id": "TXN-LEG-08",
+            "fromAccount": "MCH-APEX-01",
+            "toAccount": "MCH-APEX-02",
+            "amount": 55000.0,
+            "timestamp": "2026-10-07 05:00 PM",
+            "timeEpoch": base_t - 64800,
+            "channel": "NEFT",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Previous day collections sweep",
+            "isScamTrail": False
+        },
+        {
+            "id": "TXN-LEG-09",
+            "fromAccount": "SUPP-01",
+            "toAccount": "MCH-APEX-01",
+            "amount": 12000.0,
+            "timestamp": "2026-10-07 02:00 PM",
+            "timeEpoch": base_t - 75600,
+            "channel": "NEFT",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Supplier credit note adjustment",
+            "isScamTrail": False
+        },
+        {
+            "id": "TXN-LEG-10",
+            "fromAccount": "CUST-01",
+            "toAccount": "TENANT-01",
+            "amount": 5000.0,
+            "timestamp": "2026-10-08 03:00 PM",
+            "timeEpoch": base_t + 10800,
+            "channel": "UPI",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Peer personal transfer",
+            "isScamTrail": False
+        },
+        {
+            "id": "TXN-LEG-11",
+            "fromAccount": "INDIV-01",
+            "toAccount": "MCH-APEX-01",
+            "amount": 8400.0,
+            "timestamp": "2026-10-08 04:00 PM",
+            "timeEpoch": base_t + 14400,
+            "channel": "UPI",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Personal electronics purchase by Dr. Vikram",
+            "isScamTrail": False
+        },
+        {
+            "id": "TXN-LEG-12",
+            "fromAccount": "PAYER-01",
+            "toAccount": "CUST-02",
+            "amount": 35000.0,
+            "timestamp": "2026-10-08 08:45 AM",
+            "timeEpoch": base_t - 8100,
+            "channel": "NEFT",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Hospital staff bi-weekly stipend",
+            "isScamTrail": False
+        }
+    ]
+
+    return {
+        "id": "scenario-1",
+        "name": "Scenario 1: Baseline Legitimate Banking",
+        "narrative": "Legitimate enterprise and individual activity: High-turnover merchant with same-entity treasury sweeps (ENTITY-APEX-01) and high-activity individual (Dr. Vikram Malhotra) receiving multiple legitimate incomes without mule behaviour.",
+        "starting_transaction_id": "TXN-LEG-03",
+        "starting_account_id": "MCH-APEX-01",
+        "accounts": accounts,
+        "transactions": transactions
+    }
+
+
+def get_isolated_mule_scenario() -> Dict[str, Any]:
+    """
+    Scenario 2: Isolated Single Mule Account.
+    Pattern:
+    Victim -> Newly opened mule account -> Immediate ATM / OTC Cash-Out
+    Demonstrates:
+    - Mule detection does NOT require a long graph chain.
+    - Extreme pass-through ratio (99%) within 4 minutes.
+    - Terminal cashout node: Next-hop model reports No reliable downstream account (terminal cashout).
+    - Unregistered newly opened account (<30 days old).
+    Total: 6 accounts, 6 transactions, ~2 communities.
+    """
+    base_t = BASE_EPOCH
+
+    accounts = [
+        # --- Victim ---
+        {
+            "id": "VIC-ISO-01",
+            "name": "Rajeshwari Devi (Senior Citizen / Victim)",
+            "accountType": "Pension Savings",
+            "accountAgeDays": 2100,
+            "currentBalance": 12800.0,
+            "behavior_class": "victim",
+            "is_suspicious": 0,
+            "communityId": "Community #21",
+            "region": "Region C",
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": None,
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Monthly government pension credits and local grocery spend",
+            "entity_id": None
+        },
+        # --- Isolated Mule Account ---
+        {
+            "id": "MULE-ISO",
+            "name": "Karan Mehra (Freshly Opened Mule Account)",
+            "accountType": "Savings Basic / Jan Dhan",
+            "accountAgeDays": 14,
+            "currentBalance": 950.0,
+            "behavior_class": "mule-like",
+            "is_suspicious": 1,
+            "communityId": "Community #22",
+            "region": "Region A",
+            "status": "Flagged for Review",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": "unregistered_individual",
+            "identity_verification_status": "HIGH_RISK_UNVERIFIED",
+            "expected_activity_profile": "Dormant newly opened account; sudden single large credit with instantaneous drain",
+            "entity_id": None
+        },
+        # --- Cashout Terminal (No downstream online hops) ---
+        {
+            "id": "ATM-CASHOUT",
+            "name": "ATM Terminal #4402 / Cash Withdrawal",
+            "accountType": "Cashout Terminal",
+            "accountAgeDays": 1800,
+            "currentBalance": 0.0,
+            "behavior_class": "cashout",
+            "is_suspicious": 1,
+            "communityId": "Community #22",
+            "region": "Region A",
+            "status": "Terminal Point",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": "physical_cash_drain",
+            "identity_verification_status": "UNVERIFIED",
+            "expected_activity_profile": "Terminal physical cash drainage point with no downstream electronic accounts",
+            "entity_id": None
+        },
+        # --- Benign Normal Accounts for context ---
+        {
+            "id": "NORM-ISO-01",
+            "name": "Alok Kumar (Teacher)",
+            "accountType": "Salary Account",
+            "accountAgeDays": 840,
+            "currentBalance": 62000.0,
+            "behavior_class": "normal",
+            "is_suspicious": 0,
+            "communityId": "Community #21",
+            "region": "Region C",
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": None,
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Salary deposit and household retail shopping",
+            "entity_id": None
+        },
+        {
+            "id": "NORM-ISO-02",
+            "name": "Kiran Dairy Farm",
+            "accountType": "Current Account",
+            "accountAgeDays": 1100,
+            "currentBalance": 115000.0,
+            "behavior_class": "merchant",
+            "is_suspicious": 0,
+            "communityId": "Community #21",
+            "region": "Region C",
+            "status": "Active",
+            "business_registered": True,
+            "gstin_present": True,
+            "gstin_number": "09AAACD4433E1Z1",
+            "business_category": "dairy_farming",
+            "identity_verification_status": "VERIFIED_BUSINESS",
+            "expected_activity_profile": "Daily dairy supply collections",
+            "entity_id": "ENTITY-KIRAN-01"
+        },
+        {
+            "id": "NORM-ISO-03",
+            "name": "Suresh Patel (Electrician)",
+            "accountType": "Savings Account",
+            "accountAgeDays": 620,
+            "currentBalance": 24000.0,
+            "behavior_class": "normal",
+            "is_suspicious": 0,
+            "communityId": "Community #21",
+            "region": "Region C",
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": None,
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Small service payments and bills",
+            "entity_id": None
+        }
+    ]
+
+    transactions = [
+        # Victim extortion debit into isolated mule
+        {
+            "id": "TXN-ISO-01",
+            "fromAccount": "VIC-ISO-01",
+            "toAccount": "MULE-ISO",
+            "amount": 95000.0,
+            "timestamp": "2026-10-08 10:30 AM",
+            "timeEpoch": base_t + 1800,
+            "channel": "IMPS",
+            "riskLevel": "CRITICAL",
+            "status": "Completed",
+            "notes": "Extortion scam transfer into newly opened Jan Dhan mule account",
+            "isScamTrail": True
+        },
+        # Immediate physical cashout within 4 minutes (99% drained)
+        {
+            "id": "TXN-ISO-02",
+            "fromAccount": "MULE-ISO",
+            "toAccount": "ATM-CASHOUT",
+            "amount": 94050.0,
+            "timestamp": "2026-10-08 10:34 AM",
+            "timeEpoch": base_t + 2040,
+            "channel": "ATM",
+            "riskLevel": "CRITICAL",
+            "status": "Completed",
+            "notes": "Rapid 4-minute ATM withdrawal draining 99% of credited funds. Terminal cashout.",
+            "isScamTrail": True
+        },
+        # Benign retail transactions in Community #21
+        {
+            "id": "TXN-ISO-B01",
+            "fromAccount": "VIC-ISO-01",
+            "toAccount": "NORM-ISO-02",
+            "amount": 1400.0,
+            "timestamp": "2026-10-08 08:30 AM",
+            "timeEpoch": base_t - 5400,
+            "channel": "UPI",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Monthly milk supply payment",
+            "isScamTrail": False
+        },
+        {
+            "id": "TXN-ISO-B02",
+            "fromAccount": "NORM-ISO-01",
+            "toAccount": "NORM-ISO-02",
+            "amount": 2200.0,
+            "timestamp": "2026-10-08 09:15 AM",
+            "timeEpoch": base_t - 2700,
+            "channel": "UPI",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Grocery and dairy purchase",
+            "isScamTrail": False
+        },
+        {
+            "id": "TXN-ISO-B03",
+            "fromAccount": "NORM-ISO-01",
+            "toAccount": "NORM-ISO-03",
+            "amount": 3500.0,
+            "timestamp": "2026-10-08 09:45 AM",
+            "timeEpoch": base_t - 900,
+            "channel": "UPI",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Home electrical repair fee",
+            "isScamTrail": False
+        },
+        {
+            "id": "TXN-ISO-B04",
+            "fromAccount": "NORM-ISO-03",
+            "toAccount": "NORM-ISO-02",
+            "amount": 800.0,
+            "timestamp": "2026-10-08 10:00 AM",
+            "timeEpoch": base_t,
+            "channel": "UPI",
+            "riskLevel": "LOW",
+            "status": "Completed",
+            "notes": "Morning milk and curd",
+            "isScamTrail": False
+        }
+    ]
+
+    return {
+        "id": "scenario-2",
+        "name": "Scenario 2: Isolated Mule Account",
+        "narrative": "Isolated mule pattern: Newly opened unverified account receives ₹95,000 victim deposit and drains 99% (₹94,050) at an ATM within 4 minutes without downstream electronic layering.",
+        "starting_transaction_id": "TXN-ISO-01",
+        "starting_account_id": "MULE-ISO",
         "accounts": accounts,
         "transactions": transactions
     }
@@ -1151,6 +1786,8 @@ def generate_scenario_merchant_cashout(seed_offset: int = 1) -> Dict[str, Any]:
 # Catalog of available scenario generator functions
 _SCENARIO_GENERATORS = [
     ("flagship", get_flagship_scenario),
+    ("baseline_legitimate", get_baseline_legitimate_scenario),
+    ("isolated_mule", get_isolated_mule_scenario),
     ("rapid_layering", generate_scenario_rapid_layering),
     ("splitter_structuring", generate_scenario_splitter_structuring),
     ("merchant_cashout", generate_scenario_merchant_cashout)
@@ -1164,6 +1801,8 @@ def get_scenario_catalog() -> List[Dict[str, str]]:
     """List predefined scenario titles and IDs."""
     return [
         {"id": "scenario-flagship", "name": "Flagship: Multi-Hop Scam Network (TXN-84921)", "category": "flagship"},
+        {"id": "scenario-1", "name": "Scenario 1: Baseline Legitimate Banking", "category": "baseline_legitimate"},
+        {"id": "scenario-2", "name": "Scenario 2: Isolated Mule Account", "category": "isolated_mule"},
         {"id": "scenario-rapid", "name": "Rapid 4-Hop Layering Syndicate", "category": "rapid"},
         {"id": "scenario-structuring", "name": "Splitter & Structuring Syndicate", "category": "structuring"},
         {"id": "scenario-merchant", "name": "Shell Merchant Cashout Syndicate", "category": "merchant"}
@@ -1178,17 +1817,24 @@ def get_active_or_next_scenario(cycle: bool = False, specific_id: str = None) ->
     global _CURRENT_SCENARIO_INDEX, _DYNAMIC_SEED_COUNTER
 
     if specific_id:
-        if specific_id == "scenario-flagship":
+        sid = specific_id.lower()
+        if sid in ("scenario-flagship", "scenario-3", "flagship"):
             _CURRENT_SCENARIO_INDEX = 0
             return get_flagship_scenario()
-        elif "rapid" in specific_id:
+        elif sid in ("scenario-1", "scenario_1", "baseline", "normal"):
             _CURRENT_SCENARIO_INDEX = 1
-            return generate_scenario_rapid_layering(_DYNAMIC_SEED_COUNTER)
-        elif "structuring" in specific_id:
+            return get_baseline_legitimate_scenario()
+        elif sid in ("scenario-2", "scenario_2", "mule", "isolated"):
             _CURRENT_SCENARIO_INDEX = 2
-            return generate_scenario_splitter_structuring(_DYNAMIC_SEED_COUNTER)
-        elif "merchant" in specific_id:
+            return get_isolated_mule_scenario()
+        elif "rapid" in sid:
             _CURRENT_SCENARIO_INDEX = 3
+            return generate_scenario_rapid_layering(_DYNAMIC_SEED_COUNTER)
+        elif "structuring" in sid:
+            _CURRENT_SCENARIO_INDEX = 4
+            return generate_scenario_splitter_structuring(_DYNAMIC_SEED_COUNTER)
+        elif "merchant" in sid:
+            _CURRENT_SCENARIO_INDEX = 5
             return generate_scenario_merchant_cashout(_DYNAMIC_SEED_COUNTER)
 
     if cycle:
@@ -1196,7 +1842,7 @@ def get_active_or_next_scenario(cycle: bool = False, specific_id: str = None) ->
         _DYNAMIC_SEED_COUNTER += 1
 
     generator_type, gen_func = _SCENARIO_GENERATORS[_CURRENT_SCENARIO_INDEX]
-    if generator_type == "flagship":
+    if generator_type in ("flagship", "baseline_legitimate", "isolated_mule"):
         return gen_func()
     else:
         return gen_func(_DYNAMIC_SEED_COUNTER)

@@ -40,6 +40,14 @@ class AccountDetailResponse(BaseModel):
     behavior_class: str
     region: str
     status: str
+    # Indian Identity Context Layer (Mentor Feedback)
+    business_registered: Optional[bool] = False
+    gstin_present: Optional[bool] = False
+    gstin_number: Optional[str] = None
+    business_category: Optional[str] = None
+    identity_verification_status: Optional[str] = "VERIFIED_INDIVIDUAL"
+    expected_activity_profile: Optional[str] = None
+    entity_id: Optional[str] = None
     risk_analysis: AccountRiskResponse
 
 

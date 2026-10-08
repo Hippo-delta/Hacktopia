@@ -91,18 +91,34 @@ def rank_next_hop_candidates(
     cand_df = pd.DataFrame(feature_rows)[FEATURE_COLUMNS]
     probs = model.predict_proba(cand_df)[:, 1]
 
-    # Assemble ranked candidates
+    # Check if current account is a terminal cashout account (e.g. ATM, cashout terminal, escrow offramp)
+    curr_meta = tracker.accounts_map.get(curr_acc, {})
+    curr_type = str(curr_meta.get("accountType", "")).upper()
+    curr_name = str(curr_meta.get("name", "")).upper()
+    curr_behavior = str(curr_meta.get("behavior_class", "")).lower()
+    is_terminal = any(term in curr_type or term in curr_name for term in ["ATM", "CASHOUT", "TERMINAL", "ESCROW", "WITHDRAWAL"]) or curr_behavior == "cashout"
+
+    # Assemble ranked candidates with causal boost for prior observed connections
     ranked_candidates = []
     for i, cand_id in enumerate(valid_candidates):
         cand_meta = tracker.accounts_map.get(cand_id, {})
-        score = float(probs[i])
+        has_prior = bool(feature_rows[i]["pair_has_prior_link"] > 0)
+        prior_cnt = int(feature_rows[i]["pair_prior_transfer_count"])
+        
+        raw_score = float(probs[i])
+        # Causal boost: if there is an explicit directed prior transfer link, prioritize it
+        if has_prior:
+            adjusted_score = min(0.99, raw_score + 0.55)
+        else:
+            adjusted_score = raw_score * 0.4
+
         ranked_candidates.append({
             "account_id": cand_id,
             "account_name": cand_meta.get("name", cand_id),
             "account_type": cand_meta.get("accountType", "Account"),
-            "confidence_score": round(score, 4),
-            "has_prior_transfer": bool(feature_rows[i]["pair_has_prior_link"] > 0),
-            "prior_transfer_count": int(feature_rows[i]["pair_prior_transfer_count"])
+            "confidence_score": round(adjusted_score, 4),
+            "has_prior_transfer": has_prior,
+            "prior_transfer_count": prior_cnt
         })
 
     # Sort descending by predicted probability
@@ -111,6 +127,19 @@ def rank_next_hop_candidates(
     # Assign 1-indexed ranks
     for r_idx, c_data in enumerate(ranked_candidates, 1):
         c_data["rank"] = r_idx
+
+    # If terminal node, no reliable downstream account exists
+    if is_terminal or not ranked_candidates:
+        return {
+            "current_account": curr_acc,
+            "predicted_next_hop": None,
+            "predicted_target_name": "No reliable downstream account identified (Terminal Cash-Out)",
+            "confidence": 0.0,
+            "estimated_onward_amount": 0.0,
+            "model_version": metadata.get("model_version", "1.0.0"),
+            "total_candidates_evaluated": len(valid_candidates),
+            "top_candidates": ranked_candidates[:top_k]
+        }
 
     best_candidate = ranked_candidates[0] if ranked_candidates else None
     confidence_pct = round(best_candidate["confidence_score"] * 100, 1) if best_candidate else 0.0

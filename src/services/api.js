@@ -220,6 +220,19 @@ export async function getAccount(accountId) {
     if (data.accountAgeDays < 60) {
       riskReasons.push(`New account velocity: registered ${data.accountAgeDays} days ago with sudden high turnover`);
     }
+    // Positive legitimacy context signals (mentor feedback: high activity != automatic mule)
+    if (data.business_registered) {
+      riskReasons.push(`✅ Contextual signal: Formally registered business entity — high transaction volume may reflect legitimate commercial activity`);
+    }
+    if (data.gstin_present && data.gstin_number) {
+      riskReasons.push(`✅ GSTIN on record (${data.gstin_number}): Indicates registered taxpayer with government-visible supply chain transactions`);
+    }
+    if (data.entity_id) {
+      riskReasons.push(`✅ Same-entity link (${data.entity_id}): Inter-account transfers may represent internal treasury sweeps under common ownership`);
+    }
+    if (data.identity_verification_status === 'VERIFIED_INDIVIDUAL' || data.identity_verification_status === 'VERIFIED_BUSINESS') {
+      riskReasons.push(`✅ Identity verified: KYC documentation on record — account holder identity confirmed`);
+    }
     if (riskReasons.length === 0) {
       riskReasons.push(`Normal transactional baseline: low velocity and balanced residual holding`);
     }
@@ -242,6 +255,14 @@ export async function getAccount(accountId) {
       status: isFrozen ? 'Simulated Frozen' : data.status,
       behavior_class: data.behavior_class,
       region: data.region,
+      // Indian Identity Context
+      business_registered: data.business_registered ?? false,
+      gstin_present: data.gstin_present ?? false,
+      gstin_number: data.gstin_number ?? null,
+      business_category: data.business_category ?? null,
+      identity_verification_status: data.identity_verification_status ?? 'VERIFIED_INDIVIDUAL',
+      expected_activity_profile: data.expected_activity_profile ?? null,
+      entity_id: data.entity_id ?? null,
       riskScore,
       riskLevel,
       riskProbability: riskProb,
@@ -921,14 +942,23 @@ export async function getScenarios() {
 }
 
 export async function switchScenario(scenarioKey) {
-  // If flagship requested, tell backend
-  if (scenarioKey === 'SCENARIO_3_MULTI_HOP' || scenarioKey === 'scenario-3' || scenarioKey === 'scenario-flagship') {
-    try {
-      await fetchFromBackend('/api/scenario/select', {
-        method: 'POST',
-        body: JSON.stringify({ scenario_id: 'scenario-flagship' })
-      });
-    } catch (_) {}
+  // Map UI key to backend scenario ID
+  let backendScenarioId = 'scenario-flagship';
+  if (scenarioKey === 'SCENARIO_1_NORMAL' || scenarioKey === 'scenario-1') {
+    backendScenarioId = 'scenario-1';
+  } else if (scenarioKey === 'SCENARIO_2_SINGLE_MULE' || scenarioKey === 'scenario-2') {
+    backendScenarioId = 'scenario-2';
+  } else if (scenarioKey === 'SCENARIO_3_MULTI_HOP' || scenarioKey === 'scenario-3' || scenarioKey === 'scenario-flagship') {
+    backendScenarioId = 'scenario-flagship';
+  }
+
+  try {
+    await fetchFromBackend('/api/scenario/select', {
+      method: 'POST',
+      body: JSON.stringify({ scenario_id: backendScenarioId })
+    });
+  } catch (err) {
+    console.warn('[Scenario] Backend select failed during switchScenario:', err.message);
   }
 
   const scenario = PREDEFINED_SCENARIOS[scenarioKey] || PREDEFINED_SCENARIOS.SCENARIO_3_MULTI_HOP;

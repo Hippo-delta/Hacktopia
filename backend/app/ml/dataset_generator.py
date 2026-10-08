@@ -201,67 +201,103 @@ def generate_synthetic_dataset(
     transactions.extend(demo_txns)
 
     # -------------------------------------------------------------
-    # 2. POPULATION GENERATION: NORMAL CONSUMERS
+    # 2. POPULATION GENERATION: NORMAL CONSUMERS (INCLUDING HIGH-ACTIVITY INDIVIDUALS)
     # -------------------------------------------------------------
     normal_ids = []
     for i in range(1, num_normal + 1):
         acc_id = f"NORM-{1000 + i}"
         normal_ids.append(acc_id)
+        # 15% are high-activity legitimate individuals (salaried, consultants, landlords)
+        is_high_activity = (i <= 18)
+        acc_type = "Salary Account" if is_high_activity else "Savings Account"
+        acc_age = random.randint(400, 2400) if is_high_activity else random.randint(180, 2000)
+        
         acc = {
             "id": acc_id,
-            "name": f"Retail Customer {i}",
-            "accountType": "Savings Account",
-            "accountAgeDays": random.randint(180, 2400),
-            "currentBalance": round(random.uniform(5000.0, 150000.0), 2),
+            "name": f"Retail Customer {i}" if not is_high_activity else f"High-Activity Professional {i}",
+            "accountType": acc_type,
+            "accountAgeDays": acc_age,
+            "currentBalance": round(random.uniform(25000.0, 250000.0) if is_high_activity else random.uniform(5000.0, 95000.0), 2),
             "behavior_class": "normal",
             "is_suspicious": 0,
             "communityId": f"Community #0{random.randint(1, 8)}",
             "region": random.choice(["Region A", "Region B", "Region C", "Region D"]),
-            "status": "Active"
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": "professional_consulting" if is_high_activity else None,
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Consulting income, rental receipts, and personal household expenditures" if is_high_activity else "Personal retail savings",
+            "entity_id": None
         }
         accounts.append(acc)
         accounts_by_id[acc_id] = acc
 
     # -------------------------------------------------------------
-    # 3. POPULATION GENERATION: MERCHANTS & BUSINESSES
+    # 3. POPULATION GENERATION: MERCHANTS & BUSINESSES (INCLUDING MULTI-ACCOUNT ENTITIES)
     # -------------------------------------------------------------
     merchant_ids = []
+    # Create several multi-account enterprise entities sharing entity_id
+    enterprise_entities = [f"ENTITY-CORP-0{k}" for k in range(1, 8)]
+
     for i in range(1, num_merchants + 1):
         acc_id = f"MCH-{2000 + i}"
         merchant_ids.append(acc_id)
+        
+        # 40% belong to multi-account corporate entities
+        assigned_entity = enterprise_entities[i % len(enterprise_entities)] if (i <= 16) else f"ENTITY-SOLE-{i}"
+        is_collections = (i % 2 == 1)
+        acc_type = "Commercial Current" if is_collections else "Operating Treasury"
+        
         acc = {
             "id": acc_id,
-            "name": f"Enterprise Merchant {i}",
-            "accountType": "Commercial Current",
+            "name": f"Enterprise Merchant {i} ({'Collections' if is_collections else 'Treasury'})",
+            "accountType": acc_type,
             "accountAgeDays": random.randint(300, 3000),
             "currentBalance": round(random.uniform(50000.0, 850000.0), 2),
             "behavior_class": "merchant",
             "is_suspicious": 0,
             "communityId": f"Community #0{random.randint(1, 5)}",
             "region": random.choice(["Region A", "Region B", "Region C"]),
-            "status": "Active"
+            "status": "Active",
+            "business_registered": True,
+            "gstin_present": True,
+            "gstin_number": f"{random.randint(10,35)}AABCE{random.randint(1000,9999)}F1Z{random.randint(1,9)}",
+            "business_category": random.choice(["retail_distribution", "consumer_electronics", "agro_products", "apparel_logistics"]),
+            "identity_verification_status": "VERIFIED_BUSINESS",
+            "expected_activity_profile": "Commercial sales receipts, internal treasury sweeps, and supplier vendor settlements",
+            "entity_id": assigned_entity
         }
         accounts.append(acc)
         accounts_by_id[acc_id] = acc
 
     # -------------------------------------------------------------
-    # 4. POPULATION GENERATION: MULE ACCOUNTS (SYNDICATES)
+    # 4. POPULATION GENERATION: MULE ACCOUNTS (SYNDICATES & ISOLATED MULES)
     # -------------------------------------------------------------
     mule_ids = ["A102", "B552", "C771", "D334", "E889"]
     for i in range(1, num_mules + 1):
         acc_id = f"MULE-{3000 + i}"
         mule_ids.append(acc_id)
+        is_isolated = (i % 3 == 0)
         acc = {
             "id": acc_id,
-            "name": f"Layering Proxy {i}",
+            "name": f"Layering Proxy {i}" if not is_isolated else f"Isolated Cashout Mule {i}",
             "accountType": random.choice(["Current / Sole Prop", "Savings Account"]),
-            "accountAgeDays": random.randint(10, 60), # newly opened
-            "currentBalance": round(random.uniform(200.0, 4500.0), 2), # low retained balance
+            "accountAgeDays": random.randint(10, 40) if is_isolated else random.randint(10, 60), # newly opened
+            "currentBalance": round(random.uniform(200.0, 1500.0) if is_isolated else random.uniform(500.0, 4500.0), 2),
             "behavior_class": "mule-like",
             "is_suspicious": 1,
             "communityId": "Community #17" if (i % 2 == 0) else "Community #21",
             "region": random.choice(["Region A", "Region B"]),
-            "status": "Flagged for Review"
+            "status": "Flagged for Review",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": "unregistered_intermediary",
+            "identity_verification_status": "HIGH_RISK_UNVERIFIED",
+            "expected_activity_profile": "Rapid fund drainage with minimal balance holding",
+            "entity_id": None
         }
         accounts.append(acc)
         accounts_by_id[acc_id] = acc
@@ -281,7 +317,14 @@ def generate_synthetic_dataset(
             "is_suspicious": 1,
             "communityId": "Community #09",
             "region": "Region B",
-            "status": "Escalated"
+            "status": "Escalated",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": "unregistered_shell",
+            "identity_verification_status": "PENDING_KYC",
+            "expected_activity_profile": "Layering transfers structured below reporting thresholds",
+            "entity_id": None
         }
         accounts.append(acc)
         accounts_by_id[sid] = acc
@@ -299,7 +342,14 @@ def generate_synthetic_dataset(
             "is_suspicious": 1,
             "communityId": "Community #09",
             "region": "Region B",
-            "status": "Investigating"
+            "status": "Investigating",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": "unregistered_shell",
+            "identity_verification_status": "PENDING_KYC",
+            "expected_activity_profile": "Structuring disbursements near ₹50,000 threshold",
+            "entity_id": None
         }
         accounts.append(acc)
         accounts_by_id[acc_id] = acc
@@ -321,7 +371,14 @@ def generate_synthetic_dataset(
             "is_suspicious": 0,
             "communityId": "Community #04",
             "region": random.choice(["Region C", "Region D"]),
-            "status": "Active"
+            "status": "Active",
+            "business_registered": False,
+            "gstin_present": False,
+            "gstin_number": None,
+            "business_category": None,
+            "identity_verification_status": "VERIFIED_INDIVIDUAL",
+            "expected_activity_profile": "Personal savings and retail lifestyle spending",
+            "entity_id": None
         }
         accounts.append(acc)
         accounts_by_id[acc_id] = acc
@@ -358,9 +415,25 @@ def generate_synthetic_dataset(
         }
 
     # A. Normal retail transactions (peer-to-peer and salary)
-    for _ in range(1200):
-        sender = random.choice(normal_ids)
-        receiver = random.choice(normal_ids)
+    # Include both high-activity and low-activity normal retail consumers (1 to 40 txns)
+    # 35 normal accounts have 1-5 transactions with long delays (dormant / low-frequency users)
+    low_activity_normal = normal_ids[30:65]
+    for low_acc in low_activity_normal:
+        partner = random.choice(normal_ids)
+        if partner != low_acc:
+            amt = random.uniform(800.0, 12000.0)
+            epoch = BASE_EPOCH + random.randint(1000, 150000)
+            transactions.append(create_txn(partner, low_acc, amt, epoch, channel="UPI", notes="Infrequent retail credit"))
+            if random.random() < 0.6:
+                # low pass-through (partial spend, days later)
+                out_amt = round(amt * random.uniform(0.15, 0.45), 2)
+                transactions.append(create_txn(low_acc, random.choice(merchant_ids), out_amt, epoch + 86400, channel="UPI", notes="Grocery spend days later"))
+
+    # Bulk of normal retail transactions (with realistic clustering into localized communities)
+    active_normal_ids = normal_ids[:30] + normal_ids[65:]
+    for _ in range(650):
+        sender = random.choice(active_normal_ids)
+        receiver = random.choice(active_normal_ids)
         if sender == receiver:
             continue
         amt = random.uniform(500.0, 18000.0)
@@ -369,26 +442,72 @@ def generate_synthetic_dataset(
         transactions.append(create_txn(sender, receiver, amt, epoch, channel="UPI", notes="Retail P2P settlement"))
 
     # B. Merchant commerce transactions (customers paying merchants, merchants paying suppliers)
-    for _ in range(950):
-        # 80% consumer paying merchant
-        if random.random() < 0.8:
+    for _ in range(800):
+        # 70% consumer paying merchant, 30% high-value B2B supplier invoices
+        if random.random() < 0.70:
             sender = random.choice(normal_ids)
             receiver = random.choice(merchant_ids)
-            amt = random.uniform(250.0, 15000.0)
+            amt = random.uniform(500.0, 35000.0)
             channel = "UPI" if amt < 2000 else "NEFT"
             notes = "Point of sale / digital checkout payment"
         else:
-            # Merchant paying another merchant/supplier (batch settlements)
+            # Merchant paying supplier (batch settlements / high value B2B)
             sender = random.choice(merchant_ids)
             receiver = random.choice(merchant_ids)
             if sender == receiver:
                 continue
-            amt = random.uniform(25000.0, 180000.0)
+            amt = random.uniform(45000.0, 250000.0)
             channel = "RTGS"
-            notes = "Commercial invoice reconciliation"
+            notes = "Commercial invoice reconciliation & B2B procurement"
             
         epoch = BASE_EPOCH + random.randint(0, 172800)
         transactions.append(create_txn(sender, receiver, amt, epoch, channel=channel, notes=notes))
+
+    # B2. Same-Entity Internal Treasury Sweeps (Legitimate Multi-Account Enterprise Movements)
+    # Accounts sharing the same entity_id transfer liquidity back and forth without mule intent
+    merchants_by_entity = {}
+    for m_id in merchant_ids:
+        ent = accounts_by_id[m_id].get("entity_id")
+        if ent:
+            merchants_by_entity.setdefault(ent, []).append(m_id)
+
+    for ent, member_accs in merchants_by_entity.items():
+        if len(member_accs) >= 2:
+            for _ in range(random.randint(4, 8)):
+                from_a = member_accs[0] # e.g. Collections
+                to_a = member_accs[1]   # e.g. Treasury
+                amt = random.uniform(35000.0, 120000.0)
+                epoch = BASE_EPOCH + random.randint(3600, 160000)
+                transactions.append(create_txn(
+                    from_a, to_a, amt, epoch, channel="NEFT",
+                    notes=f"Internal treasury liquidity sweep under {ent}"
+                ))
+
+    # B3. High-activity legitimate individuals with recurring salary, rental, and family transfers
+    high_activity_ids = normal_ids[:18]
+    corporate_payers = merchant_ids[:10]
+    for ha_id in high_activity_ids:
+        # Recurring monthly retainer/salary
+        employer = random.choice(corporate_payers)
+        salary_amt = random.uniform(75000.0, 160000.0)
+        transactions.append(create_txn(
+            employer, ha_id, salary_amt, BASE_EPOCH + 3600,
+            channel="NEFT", notes="Monthly professional consulting retainer / salary"
+        ))
+        # Recurring rental inflow
+        tenant = random.choice(normal_ids[20:])
+        rent_amt = random.uniform(25000.0, 45000.0)
+        transactions.append(create_txn(
+            tenant, ha_id, rent_amt, BASE_EPOCH + 7200,
+            channel="UPI", notes="Monthly residential rental payment"
+        ))
+        # Normal recurring family/savings outflows
+        recipient = random.choice(normal_ids[20:])
+        out_amt = random.uniform(10000.0, 30000.0)
+        transactions.append(create_txn(
+            ha_id, recipient, out_amt, BASE_EPOCH + 86400,
+            channel="UPI", notes="Family maintenance & utility reimbursement"
+        ))
 
     # C. Mule pass-through syndicate chains
     # Rapid sequential hops with short delays (sub-5-minute latencies, high pass-through)
