@@ -1,6 +1,6 @@
 """
 FastAPI Entry Point for Money Trail Hunter.
-Serves graph-based fraud, mule account investigation, and ML prediction endpoints.
+Serves graph-based fraud, mule account investigation, ML prediction, and dynamic scenario endpoints.
 """
 
 from contextlib import asynccontextmanager
@@ -24,7 +24,9 @@ from app.models.schemas import (
     NextHopRequest,
     NextHopPredictionResponse,
     NetworkGraphResponse,
-    CommunityDetail
+    CommunityDetail,
+    ScenarioResponse,
+    ScenarioSelectRequest
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +40,7 @@ async def lifespan(app: FastAPI):
     data_manager.load()
     logger.info(
         f"Initialization complete: {len(data_manager.accounts)} accounts, "
-        f"{len(data_manager.transactions)} transactions loaded."
+        f"{len(data_manager.transactions)} transactions loaded in active scenario."
     )
     yield
     logger.info("Shutting down Money Trail Hunter API.")
@@ -91,11 +93,43 @@ async def health_check():
         next_hop_model_loaded=data_manager.next_hop_model_ready,
         accounts_count=len(data_manager.accounts),
         transactions_count=len(data_manager.transactions),
+        active_scenario=data_manager.active_scenario_info.get("name"),
         service=APP_NAME,
         version=APP_VERSION
     )
 
 
+# -------------------------------------------------------------
+# SCENARIO ENDPOINTS (Small, Coherent, Refreshable Demo Scenarios)
+# -------------------------------------------------------------
+@app.get("/api/scenario", response_model=ScenarioResponse, tags=["Scenario"])
+async def get_active_scenario():
+    """Retrieve metadata and telemetry for the currently active investigation scenario."""
+    return ScenarioResponse(**data_manager.get_active_scenario())
+
+
+@app.post("/api/scenario/refresh", response_model=ScenarioResponse, tags=["Scenario"])
+async def refresh_scenario():
+    """
+    Generate or switch to a new coherent investigation scenario.
+    Re-extracts features, re-runs ML models, recomputes network graph and communities.
+    """
+    summary = data_manager.refresh_scenario()
+    return ScenarioResponse(**summary)
+
+
+@app.post("/api/scenario/select", response_model=ScenarioResponse, tags=["Scenario"])
+async def select_scenario(request: ScenarioSelectRequest):
+    """
+    Select a specific scenario by ID (e.g. 'scenario-flagship' for TXN-84921).
+    """
+    summary = data_manager.refresh_scenario(specific_id=request.scenario_id)
+    return ScenarioResponse(**summary)
+
+
+# -------------------------------------------------------------
+# ACCOUNTS & RISK ENDPOINTS
+# -------------------------------------------------------------
 @app.get("/api/accounts/{account_id}/risk", response_model=AccountRiskResponse, tags=["Accounts"])
 async def get_account_risk(account_id: str):
     """Retrieve ML-driven risk evaluation and extracted forensic features for a specific account."""
@@ -141,6 +175,9 @@ async def get_account_detail(account_id: str):
     )
 
 
+# -------------------------------------------------------------
+# INVESTIGATION & GRAPH TRACING ENDPOINTS
+# -------------------------------------------------------------
 @app.post("/api/investigate", response_model=InvestigationResponse, tags=["Investigation"])
 async def investigate_transaction(request: InvestigateRequest):
     """
@@ -215,7 +252,7 @@ async def get_network(
     refresh: bool = Query(False, description="Force recalculation of network cache")
 ):
     """
-    Retrieve full transaction network graph (nodes and edges) formatted for graph visualization.
+    Retrieve active transaction network graph (nodes and edges) formatted for graph visualization.
     """
     graph_data = get_network_graph(force_refresh=refresh)
     return NetworkGraphResponse(**graph_data)

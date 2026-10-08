@@ -17,6 +17,8 @@ import {
   getScenarios, 
   switchScenario, 
   resetDataset, 
+  refreshActiveScenario,
+  selectActiveScenario,
   generateSyntheticTransactions,
   getDashboardStats,
   subscribeToDataChanges 
@@ -51,7 +53,11 @@ export default function DataManagementPage({ onNavigateToTrace, onNavigateToDash
   const handleSwitchScenario = async (scenarioKey, scenarioId) => {
     setLoading(true);
     try {
-      await switchScenario(scenarioKey);
+      if (scenarioId === 'scenario-3' || scenarioKey === 'SCENARIO_3_MULTI_HOP') {
+        await selectActiveScenario('scenario-flagship');
+      } else {
+        await switchScenario(scenarioKey);
+      }
       setActiveScenarioId(scenarioId);
       setToastMessage(`Switched active environment to ${scenarioId.toUpperCase()}`);
       setTimeout(() => setToastMessage(null), 4000);
@@ -62,12 +68,26 @@ export default function DataManagementPage({ onNavigateToTrace, onNavigateToDash
     }
   };
 
+  const handleRefreshNew = async () => {
+    setLoading(true);
+    try {
+      const summary = await refreshActiveScenario();
+      setActiveScenarioId(summary.id || 'dynamic-scenario');
+      setToastMessage(`Generated new coherent scenario: "${summary.name}" (${summary.accounts_count} accounts, ${summary.transactions_count} txns)`);
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch (err) {
+      console.error('Failed to generate scenario:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleReset = async () => {
     setLoading(true);
     try {
       await resetDataset();
       setActiveScenarioId('scenario-3');
-      setToastMessage('Reset demo dataset to Flagship Multi-Hop Scam Network.');
+      setToastMessage('Reset demo dataset to Flagship Multi-Hop Scam Network (TXN-84921).');
       setTimeout(() => setToastMessage(null), 4000);
     } finally {
       setLoading(false);
@@ -111,15 +131,15 @@ export default function DataManagementPage({ onNavigateToTrace, onNavigateToDash
             className="px-3.5 py-1.5 rounded-lg bg-dark-850 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition disabled:opacity-50"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Reset to Default
+            Reset to Flagship
           </button>
           <button
-            onClick={handleGenerate}
+            onClick={handleRefreshNew}
             disabled={loading}
             className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition disabled:opacity-50"
           >
-            <PlusCircle className="w-3.5 h-3.5" />
-            Generate Random Txns (+5)
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            New Investigation
           </button>
         </div>
       </div>

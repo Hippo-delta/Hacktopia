@@ -14,6 +14,7 @@ class HealthResponse(BaseModel):
     next_hop_model_loaded: bool
     accounts_count: int
     transactions_count: int
+    active_scenario: Optional[str] = None
     service: str
     version: str
 
@@ -115,6 +116,7 @@ class NetworkNode(BaseModel):
     risk_probability: float
     risk_level: str
     is_suspicious: bool
+    community_id: Optional[str] = None
     region: str
 
 
@@ -138,9 +140,25 @@ class NetworkGraphResponse(BaseModel):
 
 class CommunityDetail(BaseModel):
     community_id: str
+    name: Optional[str] = None
     member_count: int
     members: List[str]
     suspicious_count: int
     total_inflow: float
     average_risk_score: float = 0.0
     total_volume: float = 0.0
+
+
+class ScenarioResponse(BaseModel):
+    id: str
+    name: str
+    narrative: str
+    starting_transaction_id: str
+    starting_account_id: str
+    accounts_count: int
+    transactions_count: int
+    suspicious_accounts_count: int
+
+
+class ScenarioSelectRequest(BaseModel):
+    scenario_id: Optional[str] = Field(None, description="ID of specific scenario to select, e.g. scenario-flagship")

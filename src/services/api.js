@@ -83,7 +83,12 @@ export async function checkBackendHealth() {
 // -------------------------------------------------------------
 export async function getDashboardStats() {
   try {
-    const network = await fetchFromBackend('/api/network');
+    const [network, scenarioData, comms] = await Promise.all([
+      fetchFromBackend('/api/network'),
+      fetchFromBackend('/api/scenario').catch(() => null),
+      fetchFromBackend('/api/network/communities').catch(() => [])
+    ]);
+
     const nodes = network.nodes || [];
     const edges = network.edges || [];
 
@@ -93,14 +98,55 @@ export async function getDashboardStats() {
     const lowCount = nodes.filter(n => n.risk_level === 'LOW').length;
     const suspiciousAccounts = criticalCount + highCount;
 
+    // Calculate total high-risk volume from active edges
+    const totalVolume = edges.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const highRiskVol = edges
+      .filter(e => e.is_scam_trail || e.riskLevel === 'CRITICAL')
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+    const volFormatted = highRiskVol > 100000 
+      ? `₹${(highRiskVol / 100000).toFixed(1)} Lakh` 
+      : `₹${highRiskVol.toLocaleString()}`;
+
+    const numCommunities = comms.length || 3;
+
     return {
       kpis: {
-        totalAccounts: { value: nodes.length, formatted: nodes.length.toLocaleString(), trend: '+4.2%', note: 'Active monitored accounts' },
-        suspiciousAccounts: { value: suspiciousAccounts, formatted: String(suspiciousAccounts), trend: '+12%', note: 'ML risk probability > 60%' },
-        transactionsAnalysed: { value: edges.length, formatted: edges.length.toLocaleString(), trend: '+18.5%', note: 'Layering edges in graph' },
-        highRiskVolume: { value: 247000000, formatted: '₹24.7 Cr', trend: '+9.1%', note: 'Mule network transit' },
-        activeAlerts: { value: currentAlerts.filter(a => a.status === 'New' || a.status === 'Investigating').length, formatted: String(currentAlerts.length), trend: '-2', note: 'Requires L1/L2 action' },
-        suspiciousCommunities: { value: 15, formatted: '15', trend: '+3', note: 'NetworkX detected clusters' }
+        totalAccounts: { 
+          value: nodes.length, 
+          formatted: String(nodes.length), 
+          trend: '+1 active', 
+          note: scenarioData ? scenarioData.name : 'Monitored scenario accounts' 
+        },
+        suspiciousAccounts: { 
+          value: suspiciousAccounts, 
+          formatted: String(suspiciousAccounts), 
+          trend: 'Flagged', 
+          note: 'ML risk probability > 60%' 
+        },
+        transactionsAnalysed: { 
+          value: edges.length, 
+          formatted: String(edges.length), 
+          trend: 'Layered', 
+          note: 'Chronological money flow edges' 
+        },
+        highRiskVolume: { 
+          value: highRiskVol, 
+          formatted: volFormatted, 
+          trend: 'Traced', 
+          note: 'Scam & mule pass-through volume' 
+        },
+        activeAlerts: { 
+          value: currentAlerts.filter(a => a.status === 'New' || a.status === 'Investigating').length, 
+          formatted: String(currentAlerts.length), 
+          trend: '-1', 
+          note: 'Analyst action items' 
+        },
+        suspiciousCommunities: { 
+          value: numCommunities, 
+          formatted: String(numCommunities), 
+          trend: 'Active', 
+          note: 'NetworkX detected rings' 
+        }
       },
       riskDistribution: {
         critical: criticalCount,
@@ -110,7 +156,8 @@ export async function getDashboardStats() {
         total: nodes.length
       },
       recentActivities: currentActivities,
-      activeScenario: PREDEFINED_SCENARIOS.SCENARIO_3_MULTI_HOP.id
+      activeScenario: scenarioData ? scenarioData.id : PREDEFINED_SCENARIOS.SCENARIO_3_MULTI_HOP.id,
+      activeScenarioName: scenarioData ? scenarioData.name : 'Flagship Multi-Hop Network'
     };
   } catch (err) {
     console.warn('[Dashboard] Backend unavailable, using local cache:', err.message);
@@ -121,12 +168,12 @@ export async function getDashboardStats() {
 
     return {
       kpis: {
-        totalAccounts: { value: 218, formatted: '218', trend: '+4.2%', note: 'Representative pool' },
-        suspiciousAccounts: { value: 68, formatted: '68', trend: '+12%', note: 'Accounts with risk > 60' },
-        transactionsAnalysed: { value: 2541, formatted: '2,541', trend: '+18.5%', note: 'Scanned in window' },
-        highRiskVolume: { value: 247000000, formatted: '₹24.7 Cr', trend: '+9.1%', note: 'Mule network transit' },
+        totalAccounts: { value: currentAccounts.length, formatted: String(currentAccounts.length), trend: '+4.2%', note: 'Active accounts' },
+        suspiciousAccounts: { value: criticalCount + highCount, formatted: String(criticalCount + highCount), trend: '+12%', note: 'Risk > 60%' },
+        transactionsAnalysed: { value: currentTransactions.length, formatted: String(currentTransactions.length), trend: '+18.5%', note: 'Layering edges' },
+        highRiskVolume: { value: 75000, formatted: '₹75,000', trend: '+9.1%', note: 'Flagship scam' },
         activeAlerts: { value: currentAlerts.length, formatted: String(currentAlerts.length), trend: '-2', note: 'Active alerts' },
-        suspiciousCommunities: { value: 15, formatted: '15', trend: '+3', note: 'Cluster density' }
+        suspiciousCommunities: { value: 3, formatted: '3', trend: '+1', note: 'Cluster density' }
       },
       riskDistribution: {
         critical: criticalCount,
@@ -136,7 +183,8 @@ export async function getDashboardStats() {
         total: currentAccounts.length
       },
       recentActivities: currentActivities,
-      activeScenario: PREDEFINED_SCENARIOS.SCENARIO_3_MULTI_HOP.id
+      activeScenario: PREDEFINED_SCENARIOS.SCENARIO_3_MULTI_HOP.id,
+      activeScenarioName: 'Flagship Multi-Hop Network'
     };
   }
 }
@@ -269,12 +317,55 @@ export async function getAllAccounts(filters = {}) {
 // -------------------------------------------------------------
 export async function getTransaction(transactionId) {
   if (!transactionId) return null;
-  const match = currentTransactions.find(t => t.id.toLowerCase() === transactionId.toLowerCase());
+  const tid = transactionId.toLowerCase();
+  
+  // Try network edges first
+  try {
+    const network = await fetchFromBackend('/api/network');
+    const edge = (network.edges || []).find(e => e.id.toLowerCase() === tid);
+    if (edge) {
+      return {
+        id: edge.id,
+        fromAccount: edge.source,
+        toAccount: edge.target,
+        amount: edge.amount,
+        timestamp: edge.timestamp,
+        timeEpoch: edge.time_epoch,
+        channel: edge.channel,
+        riskLevel: edge.is_scam_trail ? 'CRITICAL' : 'LOW',
+        isScamTrail: edge.is_scam_trail,
+        status: 'Completed',
+        notes: edge.is_scam_trail ? 'Mule layer transfer in active investigation' : 'Standard bank transfer'
+      };
+    }
+  } catch (_) {}
+
+  const match = currentTransactions.find(t => t.id.toLowerCase() === tid);
   return match || null;
 }
 
 export async function getTransactions(filters = {}) {
-  let result = [...currentTransactions];
+  let txns = [];
+  try {
+    const network = await fetchFromBackend('/api/network');
+    txns = (network.edges || []).map(e => ({
+      id: e.id,
+      fromAccount: e.source,
+      toAccount: e.target,
+      amount: e.amount,
+      timestamp: e.timestamp,
+      timeEpoch: e.time_epoch,
+      channel: e.channel,
+      riskLevel: e.is_scam_trail ? 'CRITICAL' : 'LOW',
+      isScamTrail: e.is_scam_trail,
+      status: 'Completed',
+      notes: e.is_scam_trail ? 'Scam money trail hop' : 'Commercial transfer'
+    }));
+  } catch (err) {
+    txns = [...currentTransactions];
+  }
+
+  let result = txns;
 
   if (filters.search) {
     const q = filters.search.toLowerCase();
@@ -757,11 +848,89 @@ export async function getRegionalData() {
 // -------------------------------------------------------------
 // DEMO SCENARIO MANAGEMENT
 // -------------------------------------------------------------
+// DEMO SCENARIO MANAGEMENT (Backend-Powered Coherent Scenarios)
+// -------------------------------------------------------------
+export async function getActiveScenario() {
+  try {
+    return await fetchFromBackend('/api/scenario');
+  } catch (err) {
+    return {
+      id: 'scenario-flagship',
+      name: 'Flagship: Multi-Hop Scam Network (TXN-84921)',
+      narrative: 'Digital arrest multi-hop trail',
+      starting_transaction_id: 'TXN-84921',
+      starting_account_id: 'A102',
+      accounts_count: currentAccounts.length,
+      transactions_count: currentTransactions.length,
+      suspicious_accounts_count: 5
+    };
+  }
+}
+
+export async function refreshActiveScenario() {
+  try {
+    const summary = await fetchFromBackend('/api/scenario/refresh', {
+      method: 'POST'
+    });
+
+    currentActivities.unshift({
+      id: `ACT-${Date.now()}`,
+      time: 'Just now',
+      type: 'scenario',
+      description: `Loaded new coherent investigation: "${summary.name}"`,
+      severity: 'LOW',
+      icon: 'Sparkles'
+    });
+
+    notifyStateChanged();
+    return summary;
+  } catch (err) {
+    console.warn('[Scenario] Backend refresh failed, cycling local scenario:', err.message);
+    const keys = Object.keys(PREDEFINED_SCENARIOS);
+    const nextKey = keys[Math.floor(Math.random() * keys.length)];
+    return await switchScenario(nextKey);
+  }
+}
+
+export async function selectActiveScenario(scenarioId) {
+  try {
+    const summary = await fetchFromBackend('/api/scenario/select', {
+      method: 'POST',
+      body: JSON.stringify({ scenario_id: scenarioId })
+    });
+
+    currentActivities.unshift({
+      id: `ACT-${Date.now()}`,
+      time: 'Just now',
+      type: 'scenario',
+      description: `Selected investigation scenario: "${summary.name}"`,
+      severity: 'LOW',
+      icon: 'Sparkles'
+    });
+
+    notifyStateChanged();
+    return summary;
+  } catch (err) {
+    console.warn('[Scenario] Backend select failed:', err.message);
+    return null;
+  }
+}
+
 export async function getScenarios() {
   return PREDEFINED_SCENARIOS;
 }
 
 export async function switchScenario(scenarioKey) {
+  // If flagship requested, tell backend
+  if (scenarioKey === 'SCENARIO_3_MULTI_HOP' || scenarioKey === 'scenario-3' || scenarioKey === 'scenario-flagship') {
+    try {
+      await fetchFromBackend('/api/scenario/select', {
+        method: 'POST',
+        body: JSON.stringify({ scenario_id: 'scenario-flagship' })
+      });
+    } catch (_) {}
+  }
+
   const scenario = PREDEFINED_SCENARIOS[scenarioKey] || PREDEFINED_SCENARIOS.SCENARIO_3_MULTI_HOP;
   currentAccounts = JSON.parse(JSON.stringify(scenario.accounts));
   currentTransactions = JSON.parse(JSON.stringify(scenario.transactions));
@@ -781,6 +950,13 @@ export async function switchScenario(scenarioKey) {
 }
 
 export async function resetDataset() {
+  try {
+    await fetchFromBackend('/api/scenario/select', {
+      method: 'POST',
+      body: JSON.stringify({ scenario_id: 'scenario-flagship' })
+    });
+  } catch (_) {}
+
   currentAccounts = [...INITIAL_ACCOUNTS];
   currentTransactions = [...INITIAL_TRANSACTIONS];
   currentAlerts = [...INITIAL_RISK_ALERTS];
