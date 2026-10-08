@@ -37,7 +37,7 @@ export default function TraceTransactionPage({
   const [query, setQuery] = useState(initialQuery);
   const [isTracing, setIsTracing] = useState(false);
   const [trailResult, setTrailResult] = useState(null);
-  const [maxHops, setMaxHops] = useState(5);
+  const [maxHops, setMaxHops] = useState(6);
   const [selectedView, setSelectedView] = useState('both'); // 'timeline', 'graph', 'both'
 
   // Modal states
@@ -265,8 +265,8 @@ export default function TraceTransactionPage({
                   <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                     Potential Next Hop (Prediction Engine)
                   </h3>
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                    PROTOTYPE PREDICTION (DETERMINISTIC)
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    RANDOM FOREST ML MODEL
                   </span>
                 </div>
               </div>
