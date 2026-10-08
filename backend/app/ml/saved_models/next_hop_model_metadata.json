@@ -1,0 +1,210 @@
+{
+  "model_name": "NextHopRankingRandomForest",
+  "model_version": "1.0.0",
+  "model_type": "RandomForestClassifier (Pairwise Candidate Ranking)",
+  "random_seed": 2026,
+  "hyperparameters": {
+    "n_estimators": 100,
+    "max_depth": 6,
+    "min_samples_split": 4,
+    "min_samples_leaf": 2,
+    "class_weight": "balanced"
+  },
+  "features": [
+    "in_amount",
+    "curr_hist_in_count",
+    "curr_hist_out_count",
+    "curr_hist_total_txns",
+    "curr_hist_pass_through",
+    "curr_hist_unique_receivers",
+    "curr_hist_velocity",
+    "curr_account_age_days",
+    "cand_hist_in_count",
+    "cand_hist_out_count",
+    "cand_hist_total_txns",
+    "cand_hist_pass_through",
+    "cand_hist_unique_senders",
+    "cand_hist_unique_receivers",
+    "cand_hist_velocity",
+    "cand_account_age_days",
+    "pair_prior_transfer_count",
+    "pair_prior_total_amount",
+    "pair_has_prior_link",
+    "pair_reverse_transfer_count",
+    "pair_common_neighbors_count",
+    "amt_ratio_to_cand_avg_in",
+    "cand_in_out_ratio"
+  ],
+  "split_metadata": {
+    "strategy": "Chain/ring-level group partition with group_demo_flagship strictly held out in test",
+    "total_groups": 77,
+    "train_groups_count": 53,
+    "val_groups_count": 11,
+    "test_groups_count": 13,
+    "train_instances_count": 1512,
+    "val_instances_count": 278,
+    "test_instances_count": 427
+  },
+  "validation_metrics": {
+    "top1_accuracy": 0.8561,
+    "top3_accuracy": 0.9424,
+    "mrr": 0.9019,
+    "total_cases": 278
+  },
+  "test_metrics": {
+    "top1_accuracy": 0.8407,
+    "top3_accuracy": 0.9016,
+    "mrr": 0.882,
+    "total_cases": 427
+  },
+  "top_features": [
+    {
+      "rank": 1,
+      "feature": "pair_prior_total_amount",
+      "importance": 0.1867
+    },
+    {
+      "rank": 2,
+      "feature": "pair_has_prior_link",
+      "importance": 0.1624
+    },
+    {
+      "rank": 3,
+      "feature": "pair_prior_transfer_count",
+      "importance": 0.1386
+    },
+    {
+      "rank": 4,
+      "feature": "curr_hist_unique_receivers",
+      "importance": 0.0711
+    },
+    {
+      "rank": 5,
+      "feature": "cand_account_age_days",
+      "importance": 0.0693
+    },
+    {
+      "rank": 6,
+      "feature": "cand_in_out_ratio",
+      "importance": 0.0671
+    },
+    {
+      "rank": 7,
+      "feature": "curr_hist_out_count",
+      "importance": 0.0397
+    },
+    {
+      "rank": 8,
+      "feature": "cand_hist_total_txns",
+      "importance": 0.0373
+    },
+    {
+      "rank": 9,
+      "feature": "cand_hist_velocity",
+      "importance": 0.0356
+    },
+    {
+      "rank": 10,
+      "feature": "cand_hist_unique_senders",
+      "importance": 0.0265
+    }
+  ],
+  "demo_results": [
+    {
+      "current_account": "A102",
+      "expected_next": "B552",
+      "txn_id": "TXN-84922",
+      "amount": 73500.0,
+      "predicted_rank": 1,
+      "top_candidates": [
+        {
+          "account": "B552",
+          "score": 0.9772,
+          "is_expected": true
+        },
+        {
+          "account": "MCH-2029",
+          "score": 0.5991,
+          "is_expected": false
+        },
+        {
+          "account": "NORM-1003",
+          "score": 0.4458,
+          "is_expected": false
+        }
+      ]
+    },
+    {
+      "current_account": "B552",
+      "expected_next": "C771",
+      "txn_id": "TXN-84923",
+      "amount": 70000.0,
+      "predicted_rank": 1,
+      "top_candidates": [
+        {
+          "account": "C771",
+          "score": 0.9772,
+          "is_expected": true
+        },
+        {
+          "account": "MCH-2032",
+          "score": 0.4829,
+          "is_expected": false
+        },
+        {
+          "account": "MCH-2001",
+          "score": 0.4728,
+          "is_expected": false
+        }
+      ]
+    },
+    {
+      "current_account": "C771",
+      "expected_next": "D334",
+      "txn_id": "TXN-84924",
+      "amount": 68000.0,
+      "predicted_rank": 1,
+      "top_candidates": [
+        {
+          "account": "D334",
+          "score": 0.9772,
+          "is_expected": true
+        },
+        {
+          "account": "MCH-2032",
+          "score": 0.4829,
+          "is_expected": false
+        },
+        {
+          "account": "MCH-2001",
+          "score": 0.4728,
+          "is_expected": false
+        }
+      ]
+    },
+    {
+      "current_account": "D334",
+      "expected_next": "E889",
+      "txn_id": "TXN-84925",
+      "amount": 65500.0,
+      "predicted_rank": 1,
+      "top_candidates": [
+        {
+          "account": "E889",
+          "score": 0.9772,
+          "is_expected": true
+        },
+        {
+          "account": "NORM-1043",
+          "score": 0.4767,
+          "is_expected": false
+        },
+        {
+          "account": "MCH-2003",
+          "score": 0.4751,
+          "is_expected": false
+        }
+      ]
+    }
+  ]
+}

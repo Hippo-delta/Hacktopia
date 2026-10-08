@@ -3,6 +3,7 @@ import {
   GitBranch, 
   Search, 
   Clock, 
+  Network,
   AlertTriangle, 
   ShieldAlert, 
   Zap, 
