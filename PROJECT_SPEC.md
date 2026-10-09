@@ -1,32 +1,27 @@
 # Project Specification
 
 ## Project Name
-*TBD / Hacktopia Project*
+Mule Account Money-Trail Hunter — Internal Access Gateway
 
 ## Problem
-<!-- Clearly describe the core problem being solved -->
-- 
+Financial intelligence analysts need to track sophisticated illicit fund layering schemes across mule bank accounts. Internal tools require an interface that is distraction-free, austere, dense with forensic meaning, and respects the high-stakes security posture of the institution.
 
 ## Proposed Solution
-<!-- High-level summary of the proposed solution -->
-- 
+A specialized, austere internal authentication portal that mimics a forensic ledger instrument. Uses an asymmetric 12-column grid featuring an analyst sign-in pane on the left and a live vector reconstruction of a traced money route on the right.
 
 ## Target Users
-<!-- Primary personas and end users -->
-- 
+- Anti-Money Laundering (AML) investigators
+- Financial Crimes & Fraud Analysts
+- Bank Risk & Forensic Intelligence Specialists
 
 ## Core Features
-<!-- Essential MVP features for the hackathon -->
-- 
+- Forensic dark graphite palette (#101113 / #17191C) with a single signal-amber (#E0A526) accent.
+- Orthogonal SVG money-trail visualization with 8 account nodes, timestamps, and 1.2s single-draw animation.
+- Restrained, accessible interactions (plain-language inline errors, 2px focus ring, text-based password visibility toggle, non-glowing flat amber action button with progress indicator).
+- WCAG AA contrast compliance and `prefers-reduced-motion` support.
 
 ## Technology Stack
-- **Frontend:** 
-- **Backend:** 
-- **Database:** 
-- **APIs / Services:** 
-- **Deployment / Tools:** 
-
-## Important Constraints
-- Hackathon deadline and evaluation criteria
-- Scope constrained to MVP deliverables
-- External dependencies and API limits
+- **Frontend:** Semantic HTML5, CSS3 Custom Properties (Design Tokens), Vanilla JS
+- **Typography:** IBM Plex Sans & IBM Plex Mono via Google Fonts
+- **Visuals:** Pure inline SVG with orthogonal bezier/line paths
+- **Backend Auth:** Clearly marked integration points in `app.js` for IdP / SAML 2.0 / OAuth2 endpoints.

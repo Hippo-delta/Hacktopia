@@ -27,6 +27,46 @@ export default function NetworkGraph({
   const [hoveredNode, setHoveredNode] = useState(null);
   const [hoveredEdge, setHoveredEdge] = useState(null);
 
+  // Position nodes nicely using a deterministic circular / hierarchical layout
+  const [nodePositions, setNodePositions] = useState({});
+
+  useEffect(() => {
+    // Generate organic layout based on node connections and risk
+    const positions = {};
+    const width = 800;
+    const height = 500;
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    // Separate by scam trail vs normal
+    const scamNodeIds = ['Victim-001', 'A102', 'B552', 'C771', 'D334', 'E889'];
+    const syndicateNodes = ['G443', 'M901'];
+    const merchantNodes = ['F221', 'H667', 'N101', 'N102'];
+
+    // Place scam flow in prominent horizontal wave across center
+    scamNodeIds.forEach((id, idx) => {
+      const x = 120 + idx * 110;
+      const y = centerY + Math.sin(idx * 0.8) * 60 - 20;
+      positions[id] = { x, y };
+    });
+
+    // Place secondary syndicate slightly below
+    syndicateNodes.forEach((id, idx) => {
+      positions[id] = {
+        x: centerX + (idx === 0 ? -60 : 70),
+        y: centerY + 140
+      };
+    });
+
+    // Place legitimate merchants in upper orbit
+    merchantNodes.forEach((id, idx) => {
+      positions[id] = {
+        x: 180 + idx * 130,
+        y: 110 + (idx % 2 === 0 ? -25 : 25)
+      };
+    });
+
+    // Fallback for any other nodes in circle
   // Position nodes nicely using a deterministic, adaptive flow layout
   const [nodePositions, setNodePositions] = useState({});
 
@@ -102,6 +142,7 @@ export default function NetworkGraph({
       if (!positions[n.id]) {
         const angle = (i / Math.max(1, nodes.length)) * 2 * Math.PI;
         positions[n.id] = {
+          x: centerX + Math.cos(angle) * 260,
           x: width / 2 + Math.cos(angle) * 250,
           y: centerY + Math.sin(angle) * 160
         };
@@ -109,6 +150,7 @@ export default function NetworkGraph({
     });
 
     setNodePositions(positions);
+  }, [nodes]);
   }, [nodes, edges]);
 
   // Handle node drag

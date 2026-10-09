@@ -53,6 +53,7 @@ export default function DataManagementPage({ onNavigateToTrace, onNavigateToDash
   const handleSwitchScenario = async (scenarioKey, scenarioId) => {
     setLoading(true);
     try {
+      await switchScenario(scenarioKey);
       if (scenarioId === 'scenario-3' || scenarioKey === 'SCENARIO_3_MULTI_HOP') {
         await selectActiveScenario('scenario-flagship');
       } else {
@@ -87,6 +88,7 @@ export default function DataManagementPage({ onNavigateToTrace, onNavigateToDash
     try {
       await resetDataset();
       setActiveScenarioId('scenario-3');
+      setToastMessage('Reset demo dataset to Flagship Multi-Hop Scam Network.');
       setToastMessage('Reset demo dataset to Flagship Multi-Hop Scam Network (TXN-84921).');
       setTimeout(() => setToastMessage(null), 4000);
     } finally {
@@ -131,6 +133,15 @@ export default function DataManagementPage({ onNavigateToTrace, onNavigateToDash
             className="px-3.5 py-1.5 rounded-lg bg-dark-850 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition disabled:opacity-50"
           >
             <RotateCcw className="w-3.5 h-3.5" />
+            Reset to Default
+          </button>
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition disabled:opacity-50"
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            Generate Random Txns (+5)
             Reset to Flagship
           </button>
           <button
