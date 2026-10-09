@@ -1,7 +1,7 @@
 import React from 'react';
 import { User, X, Shield, Key, Building2, CheckCircle2 } from 'lucide-react';
 
-export default function ProfileModal({ isOpen, onClose }) {
+export default function ProfileModal({ isOpen, onClose, onLogout }) {
   if (!isOpen) return null;
 
   return (
@@ -50,7 +50,18 @@ export default function ProfileModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          <div className="pt-2 flex justify-end">
+          <div className="pt-2 flex items-center justify-between">
+            {onLogout ? (
+              <button
+                onClick={() => {
+                  onClose();
+                  onLogout();
+                }}
+                className="px-3 py-2 rounded-lg bg-red-950/60 hover:bg-red-900/60 border border-red-500/30 text-red-300 font-medium text-xs transition"
+              >
+                Sign Out
+              </button>
+            ) : <div />}
             <button
               onClick={onClose}
               className="px-4 py-2 rounded-lg bg-dark-800 hover:bg-slate-800 text-white font-medium text-xs transition"

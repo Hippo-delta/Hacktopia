@@ -223,6 +223,46 @@ export default function AccountInvestigationPage({
         </div>
       </div>
 
+      {/* Indian Identity & Business Context Row */}
+      {(account.identity_verification_status || account.business_category || account.entity_id) && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 rounded-xl bg-dark-900 border border-slate-800">
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Identity Verification</span>
+            <span className={`text-xs font-mono font-semibold px-2 py-0.5 rounded ${
+              account.identity_verification_status?.includes('VERIFIED')
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+            }`}>
+              {account.identity_verification_status || '—'}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Business Registration</span>
+            <span className="text-xs font-mono text-slate-200">
+              {account.business_registered ? '✅ Registered Entity' : '⚪ Individual / Unregistered'}
+            </span>
+            {account.gstin_present && account.gstin_number && (
+              <span className="text-[10px] font-mono text-indigo-400 block mt-0.5">GSTIN: {account.gstin_number}</span>
+            )}
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Business Category</span>
+            <span className="text-xs font-mono text-slate-200 capitalize">
+              {account.business_category ? account.business_category.replace(/_/g, ' ') : '—'}
+            </span>
+            {account.entity_id && (
+              <span className="text-[10px] font-mono text-purple-400 block mt-0.5">Entity: {account.entity_id}</span>
+            )}
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Expected Activity Profile</span>
+            <span className="text-[11px] text-slate-300 leading-snug">
+              {account.expected_activity_profile || '—'}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Explainable Risk Panel (Why this account is high risk) & Action Bar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Risk Explainability (7 cols) */}

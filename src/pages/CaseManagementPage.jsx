@@ -12,11 +12,12 @@ import {
   ShieldAlert, 
   Clock, 
   Lock,
-  ArrowRight
+  ArrowRight,
+  Info
 } from 'lucide-react';
 import RiskBadge from '../components/RiskBadge';
 import CaseCreateModal from '../components/CaseCreateModal';
-import { getCases, getCaseById, removeEvidenceFromCase, subscribeToDataChanges } from '../services/api';
+import { getCases, getCaseById, removeEvidenceFromCase, getNetworkData, subscribeToDataChanges } from '../services/api';
 import { formatCurrency, getStatusBadgeClass } from '../utils/formatters';
 
 export default function CaseManagementPage({ 
@@ -27,13 +28,24 @@ export default function CaseManagementPage({
   const [cases, setCases] = useState([]);
   const [selectedCaseId, setSelectedCaseId] = useState('CASE-2026-0142');
   const [selectedCase, setSelectedCase] = useState(null);
+  const [activeGraphNodes, setActiveGraphNodes] = useState(new Set());
+  const [activeGraphEdges, setActiveGraphEdges] = useState(new Set());
   const [loading, setLoading] = useState(true);
 
   const loadCases = async () => {
     try {
       setLoading(true);
-      const list = await getCases();
+      const [list, network] = await Promise.all([
+        getCases(),
+        getNetworkData().catch(() => ({ nodes: [], edges: [] }))
+      ]);
       setCases(list);
+      
+      const nodeIds = new Set((network.nodes || []).map(n => n.id.toLowerCase()));
+      const edgeIds = new Set((network.edges || []).map(e => e.id.toLowerCase()));
+      setActiveGraphNodes(nodeIds);
+      setActiveGraphEdges(edgeIds);
+
       if (list.length > 0) {
         const found = list.find(c => c.id === selectedCaseId) || list[0];
         setSelectedCase(found);
@@ -201,51 +213,102 @@ export default function CaseManagementPage({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {(selectedCase.evidenceList || []).map((ev) => (
-                    <div 
-                      key={ev.id}
-                      className="p-3.5 rounded-xl bg-dark-950 border border-slate-800 hover:border-slate-700 transition space-y-2 relative group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-400 px-1.5 py-0.2 bg-indigo-500/10 rounded border border-indigo-500/20">
-                          [EVIDENCE: {ev.type}]
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-mono text-slate-500">{ev.timestamp}</span>
-                          <button
-                            onClick={() => handleRemoveEvidence(ev.id)}
-                            className="text-slate-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition"
-                            title="Remove from board"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                  {(selectedCase.evidenceList || []).map((ev) => {
+                    // Extract primary entity ID from label (e.g. 'Mule Layer 1 (A102)' -> 'A102' or 'TXN-84921')
+                    const match = ev.label.match(/\b([A-Za-z0-9_-]+)\b/g);
+                    let targetId = null;
+                    if (ev.type === 'account') {
+                      const parenMatch = ev.label.match(/\(([^)]+)\)/);
+                      targetId = parenMatch ? parenMatch[1].trim() : (match ? match[match.length - 1] : ev.label);
+                    } else if (ev.type === 'transaction') {
+                      const txnMatch = ev.label.match(/(TXN-[A-Za-z0-9-]+)/i);
+                      targetId = txnMatch ? txnMatch[1].trim() : (match ? match[0] : ev.label);
+                    }
+
+                    const isAccountValid = ev.type === 'account' && targetId && activeGraphNodes.has(targetId.toLowerCase());
+                    const isTransactionValid = ev.type === 'transaction' && targetId && activeGraphEdges.has(targetId.toLowerCase());
+                    const isAvailableInGraph = isAccountValid || isTransactionValid || (ev.type !== 'account' && ev.type !== 'transaction');
+                    const isHistoricalUnavailable = (ev.type === 'account' || ev.type === 'transaction') && !isAvailableInGraph;
+
+                    return (
+                      <div 
+                        key={ev.id}
+                        className={`p-3.5 rounded-xl bg-dark-950 border transition space-y-2 relative group ${
+                          isHistoricalUnavailable ? 'border-amber-500/30 bg-dark-950/80' : 'border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-400 px-1.5 py-0.2 bg-indigo-500/10 rounded border border-indigo-500/20">
+                              [EVIDENCE: {ev.type}]
+                            </span>
+                            {isHistoricalUnavailable && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                                <Info className="w-2.5 h-2.5" />
+                                Historical Reference — Not in Current Graph
+                              </span>
+                            )}
+                            {!isHistoricalUnavailable && (ev.type === 'account' || ev.type === 'transaction') && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                Live Active Graph
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-mono text-slate-500">{ev.timestamp}</span>
+                            <button
+                              onClick={() => handleRemoveEvidence(ev.id)}
+                              className="text-slate-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition"
+                              title="Remove from board"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="font-mono font-bold text-white text-xs">{ev.label}</div>
+                        <p className="text-[11px] text-slate-300 leading-snug">{ev.detail}</p>
+
+                        {/* Quick Navigation links based on evidence type */}
+                        <div className="pt-2 border-t border-slate-800/60 flex items-center justify-end gap-2 text-[10px]">
+                          {ev.type === 'account' && (
+                            isAccountValid ? (
+                              <button
+                                onClick={() => onNavigateToAccount(targetId)}
+                                className="text-indigo-400 hover:underline flex items-center gap-0.5 font-medium"
+                              >
+                                Open Account <ArrowRight className="w-2.5 h-2.5" />
+                              </button>
+                            ) : (
+                              <span 
+                                className="text-slate-500 cursor-not-allowed flex items-center gap-0.5" 
+                                title="This referenced account belongs to another investigation scenario and is not in the active graph."
+                              >
+                                Open Account (Not in Current Graph)
+                              </span>
+                            )
+                          )}
+                          {ev.type === 'transaction' && (
+                            isTransactionValid ? (
+                              <button
+                                onClick={() => onNavigateToTrace(targetId)}
+                                className="text-indigo-400 hover:underline flex items-center gap-0.5 font-medium"
+                              >
+                                Trace Flow <ArrowRight className="w-2.5 h-2.5" />
+                              </button>
+                            ) : (
+                              <span 
+                                className="text-slate-500 cursor-not-allowed flex items-center gap-0.5"
+                                title="This referenced transaction belongs to another investigation scenario and is not in the active graph."
+                              >
+                                Trace Flow (Not in Current Graph)
+                              </span>
+                            )
+                          )}
                         </div>
                       </div>
-
-                      <div className="font-mono font-bold text-white text-xs">{ev.label}</div>
-                      <p className="text-[11px] text-slate-300 leading-snug">{ev.detail}</p>
-
-                      {/* Quick Navigation links based on evidence type */}
-                      <div className="pt-2 border-t border-slate-800/60 flex items-center justify-end gap-2 text-[10px]">
-                        {ev.type === 'account' && (
-                          <button
-                            onClick={() => onNavigateToAccount(ev.label.split(' ')[0])}
-                            className="text-indigo-400 hover:underline flex items-center gap-0.5"
-                          >
-                            Open Account <ArrowRight className="w-2.5 h-2.5" />
-                          </button>
-                        )}
-                        {ev.type === 'transaction' && (
-                          <button
-                            onClick={() => onNavigateToTrace(ev.label.split(' ')[0])}
-                            className="text-indigo-400 hover:underline flex items-center gap-0.5"
-                          >
-                            Trace Flow <ArrowRight className="w-2.5 h-2.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </>

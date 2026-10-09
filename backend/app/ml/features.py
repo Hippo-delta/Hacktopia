@@ -93,10 +93,47 @@ def extract_account_features(
             if peer_meta.get("isMule") or peer_meta.get("behavior_class") in ("mule-like", "structuring"):
                 suspicious_connections += 1
                 
-    # Account age if available
+    # Account identity context if available (defaults to individual/unregistered)
     account_age_days = 180
+    business_registered = 0
+    gstin_present = 0
+    identity_verified = 0
+    curr_entity_id = None
+    
     if accounts_metadata and acc_id in accounts_metadata:
-        account_age_days = int(accounts_metadata[acc_id].get("accountAgeDays", 180))
+        meta = accounts_metadata[acc_id]
+        account_age_days = int(meta.get("accountAgeDays", 180))
+        business_registered = int(bool(meta.get("business_registered", False)))
+        gstin_present = int(bool(meta.get("gstin_present", False)))
+        
+        status_str = str(meta.get("identity_verification_status", "")).upper()
+        if "VERIFIED" in status_str:
+            identity_verified = 1
+        curr_entity_id = meta.get("entity_id")
+
+    # Ratio of transactions that are internal treasury sweeps under the same entity_id
+    same_entity_txns = 0
+    if curr_entity_id and accounts_metadata:
+        for t in in_txns:
+            sender_id = str(t.get("fromAccount"))
+            if accounts_metadata.get(sender_id, {}).get("entity_id") == curr_entity_id:
+                same_entity_txns += 1
+        for t in out_txns:
+            recv_id = str(t.get("toAccount"))
+            if accounts_metadata.get(recv_id, {}).get("entity_id") == curr_entity_id:
+                same_entity_txns += 1
+
+    same_entity_ratio = (same_entity_txns / total_txns) if total_txns > 0 else 0.0
+
+    # Recurring counterparties ratio (legitimate businesses and individuals have recurring counterparties)
+    counterparty_counts = {}
+    for t in (in_txns + out_txns):
+        other = str(t.get("fromAccount") if str(t.get("toAccount")) == acc_id else t.get("toAccount"))
+        if other and other != acc_id:
+            counterparty_counts[other] = counterparty_counts.get(other, 0) + 1
+
+    recurring_parties = sum(1 for c in counterparty_counts.values() if c >= 2)
+    recurring_counterparty_ratio = (recurring_parties / len(counterparty_counts)) if counterparty_counts else 0.0
 
     return {
         "account_id": acc_id,
@@ -120,7 +157,12 @@ def extract_account_features(
         "structuring_ratio": structuring_ratio,
         "network_degree": network_degree,
         "suspicious_connection_count": suspicious_connections,
-        "account_age_days": account_age_days
+        "account_age_days": account_age_days,
+        "business_registered": business_registered,
+        "gstin_present": gstin_present,
+        "identity_verified": identity_verified,
+        "same_entity_transfer_ratio": round(same_entity_ratio, 4),
+        "recurring_counterparty_ratio": round(recurring_counterparty_ratio, 4)
     }
 
 

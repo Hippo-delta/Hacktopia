@@ -13,8 +13,8 @@ export default function HelpModal({ isOpen, onClose }) {
               <HelpCircle className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Money Trail Hunter — Investigator Guide</h3>
-              <p className="text-[11px] text-slate-400">FT-03 Mule Account Forensic Platform (Hackatopia 2026)</p>
+              <h3 className="text-sm font-bold text-white">PABLO — Investigator Guide</h3>
+              <p className="text-[11px] text-slate-400">Financial Intelligence & Mule Forensic Platform</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition">

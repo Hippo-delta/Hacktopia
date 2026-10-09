@@ -171,6 +171,13 @@ async def get_account_detail(account_id: str):
         behavior_class=str(acc.get("behavior_class", "unknown")),
         region=str(acc.get("region", "National")),
         status=str(acc.get("status", "Active")),
+        business_registered=bool(acc.get("business_registered", False)),
+        gstin_present=bool(acc.get("gstin_present", False)),
+        gstin_number=acc.get("gstin_number"),
+        business_category=acc.get("business_category"),
+        identity_verification_status=acc.get("identity_verification_status", "VERIFIED_INDIVIDUAL"),
+        expected_activity_profile=acc.get("expected_activity_profile"),
+        entity_id=acc.get("entity_id"),
         risk_analysis=AccountRiskResponse(**risk_info)
     )
 

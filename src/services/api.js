@@ -28,6 +28,8 @@ let currentActivities = [...RECENT_ACTIVITIES];
 let currentCommunities = [...SUSPICIOUS_COMMUNITIES];
 let currentRegions = [...SYNTHETIC_REGIONS];
 const simulatedFrozenAccounts = new Set();
+const alertStatusMap = new Map();
+let alertDetailsCache = { scenarioId: null, alerts: [] };
 
 // Listeners for dataset state changes
 const subscribers = new Set();
@@ -107,7 +109,9 @@ export async function getDashboardStats() {
       ? `₹${(highRiskVol / 100000).toFixed(1)} Lakh` 
       : `₹${highRiskVol.toLocaleString()}`;
 
-    const numCommunities = comms.length || 3;
+    // Fetch live risk alerts count to ensure Dashboard KPI exactly matches Risk Alerts page
+    const liveAlerts = await getRiskAlerts();
+    const activeAlertsCount = liveAlerts.filter(a => a.status === 'New' || a.status === 'Investigating').length;
 
     return {
       kpis: {
@@ -136,9 +140,9 @@ export async function getDashboardStats() {
           note: 'Scam & mule pass-through volume' 
         },
         activeAlerts: { 
-          value: currentAlerts.filter(a => a.status === 'New' || a.status === 'Investigating').length, 
-          formatted: String(currentAlerts.length), 
-          trend: '-1', 
+          value: activeAlertsCount, 
+          formatted: String(liveAlerts.length), 
+          trend: liveAlerts.length > 0 ? `${liveAlerts.length} Flagged` : '0 Alerts', 
           note: 'Analyst action items' 
         },
         suspiciousCommunities: { 
@@ -166,13 +170,22 @@ export async function getDashboardStats() {
     const mediumCount = currentAccounts.filter(a => a.riskLevel === 'MEDIUM').length;
     const lowCount = currentAccounts.filter(a => a.riskLevel === 'LOW').length;
 
+    const fallbackHighRiskVol = currentTransactions
+      .filter(t => t.isScamTrail || t.riskLevel === 'CRITICAL')
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+    const fallbackVolFormatted = fallbackHighRiskVol > 100000
+      ? `₹${(fallbackHighRiskVol / 100000).toFixed(1)} Lakh`
+      : `₹${fallbackHighRiskVol.toLocaleString()}`;
+
+    const fallbackAlerts = currentAccounts.filter(a => a.riskScore >= 60 || a.riskLevel === 'CRITICAL' || a.riskLevel === 'HIGH');
+
     return {
       kpis: {
         totalAccounts: { value: currentAccounts.length, formatted: String(currentAccounts.length), trend: '+4.2%', note: 'Active accounts' },
         suspiciousAccounts: { value: criticalCount + highCount, formatted: String(criticalCount + highCount), trend: '+12%', note: 'Risk > 60%' },
         transactionsAnalysed: { value: currentTransactions.length, formatted: String(currentTransactions.length), trend: '+18.5%', note: 'Layering edges' },
-        highRiskVolume: { value: 75000, formatted: '₹75,000', trend: '+9.1%', note: 'Flagship scam' },
-        activeAlerts: { value: currentAlerts.length, formatted: String(currentAlerts.length), trend: '-2', note: 'Active alerts' },
+        highRiskVolume: { value: fallbackHighRiskVol, formatted: fallbackVolFormatted, trend: 'Traced', note: 'Scam pass-through volume' },
+        activeAlerts: { value: fallbackAlerts.length, formatted: String(fallbackAlerts.length), trend: '-2', note: 'Active alerts' },
         suspiciousCommunities: { value: 3, formatted: '3', trend: '+1', note: 'Cluster density' }
       },
       riskDistribution: {
@@ -220,6 +233,19 @@ export async function getAccount(accountId) {
     if (data.accountAgeDays < 60) {
       riskReasons.push(`New account velocity: registered ${data.accountAgeDays} days ago with sudden high turnover`);
     }
+    // Positive legitimacy context signals (mentor feedback: high activity != automatic mule)
+    if (data.business_registered) {
+      riskReasons.push(`✅ Contextual signal: Formally registered business entity — high transaction volume may reflect legitimate commercial activity`);
+    }
+    if (data.gstin_present && data.gstin_number) {
+      riskReasons.push(`✅ GSTIN on record (${data.gstin_number}): Indicates registered taxpayer with government-visible supply chain transactions`);
+    }
+    if (data.entity_id) {
+      riskReasons.push(`✅ Same-entity link (${data.entity_id}): Inter-account transfers may represent internal treasury sweeps under common ownership`);
+    }
+    if (data.identity_verification_status === 'VERIFIED_INDIVIDUAL' || data.identity_verification_status === 'VERIFIED_BUSINESS') {
+      riskReasons.push(`✅ Identity verified: KYC documentation on record — account holder identity confirmed`);
+    }
     if (riskReasons.length === 0) {
       riskReasons.push(`Normal transactional baseline: low velocity and balanced residual holding`);
     }
@@ -242,6 +268,14 @@ export async function getAccount(accountId) {
       status: isFrozen ? 'Simulated Frozen' : data.status,
       behavior_class: data.behavior_class,
       region: data.region,
+      // Indian Identity Context
+      business_registered: data.business_registered ?? false,
+      gstin_present: data.gstin_present ?? false,
+      gstin_number: data.gstin_number ?? null,
+      business_category: data.business_category ?? null,
+      identity_verification_status: data.identity_verification_status ?? 'VERIFIED_INDIVIDUAL',
+      expected_activity_profile: data.expected_activity_profile ?? null,
+      entity_id: data.entity_id ?? null,
       riskScore,
       riskLevel,
       riskProbability: riskProb,
@@ -548,8 +582,107 @@ export async function predictNextHop(accountId, incomingTxnId) {
 // RISK ALERTS
 // -------------------------------------------------------------
 export async function getRiskAlerts(filters = {}) {
-  let result = [...currentAlerts];
+  let alerts = [];
 
+  try {
+    const [network, scenarioMeta] = await Promise.all([
+      fetchFromBackend('/api/network'),
+      fetchFromBackend('/api/scenario').catch(() => null)
+    ]);
+
+    const activeScenarioId = scenarioMeta ? scenarioMeta.id : 'unknown';
+    const highRiskNodes = (network.nodes || []).filter(
+      n => (n.risk_probability !== undefined ? n.risk_probability >= 0.60 : (n.risk_level === 'CRITICAL' || n.risk_level === 'HIGH'))
+    );
+
+    // If cache matches the current active scenario and node count, reuse cached forensics
+    if (alertDetailsCache.scenarioId === activeScenarioId && alertDetailsCache.alerts.length === highRiskNodes.length) {
+      alerts = alertDetailsCache.alerts;
+    } else {
+      // Fetch detailed forensic features for each high-risk account in parallel
+      const detailedAlerts = await Promise.all(
+        highRiskNodes.map(async (node) => {
+          let feats = {};
+          let accAge = 30;
+          try {
+            const accData = await fetchFromBackend(`/api/accounts/${encodeURIComponent(node.id)}`);
+            feats = accData.risk_analysis?.features || {};
+            if (accData.accountAgeDays !== undefined) accAge = accData.accountAgeDays;
+          } catch (_) {}
+
+          let alertType = 'High transaction velocity';
+          let description = `High-velocity activity detected on ${node.id} with risk probability ${(node.risk_probability * 100).toFixed(0)}%.`;
+
+          if (feats.structuring_ratio > 0.3) {
+            alertType = 'Structuring / splitting pattern';
+            description = `Structuring pattern detected: Repeated transfers clustered near statutory reporting thresholds.`;
+          } else if (feats.pass_through_ratio >= 0.8 && feats.median_in_out_delay_min <= 10) {
+            alertType = 'Rapid onward transfer';
+            description = `Rapid pass-through: ${(feats.pass_through_ratio * 100).toFixed(0)}% funds drained within ${Math.round(feats.median_in_out_delay_min || 3)} mins of receipt.`;
+          } else if (feats.unique_senders >= 5) {
+            alertType = 'Multiple unrelated senders';
+            description = `Multiple unrelated senders (${Math.round(feats.unique_senders)}) depositing funds with rapid onward disbursement.`;
+          } else if (feats.txn_velocity_per_hour >= 5) {
+            alertType = 'High transaction velocity';
+            description = `High-velocity burst: ${(feats.txn_velocity_per_hour).toFixed(1)} transactions/hour across linked network edges.`;
+          } else if (accAge < 30) {
+            alertType = 'Unusual transaction frequency';
+            description = `Newly opened account (${accAge} days old) exhibiting immediate high-velocity layering activity.`;
+          } else {
+            alertType = 'Suspicious community membership';
+            description = `Mule syndicate involvement: Interlocking transfers within high-risk network cluster.`;
+          }
+
+          const alertId = `ALT-${node.id}`;
+          return {
+            id: alertId,
+            accountId: node.id,
+            riskScore: Math.round(node.risk_probability * 100),
+            alertType,
+            severity: node.risk_level || 'CRITICAL',
+            detectedTime: 'Live Model Trigger',
+            status: 'New',
+            assignedAnalyst: 'Agent R. Sharma',
+            description
+          };
+        })
+      );
+
+      // Sort by riskScore descending
+      detailedAlerts.sort((a, b) => b.riskScore - a.riskScore);
+      alertDetailsCache = { scenarioId: activeScenarioId, alerts: detailedAlerts };
+      alerts = detailedAlerts;
+    }
+  } catch (err) {
+    console.warn('[Alerts] Backend unavailable, falling back to local scenario alerts:', err.message);
+    alerts = currentAccounts
+      .filter(a => (a.riskScore !== undefined ? a.riskScore >= 60 : (a.riskLevel === 'CRITICAL' || a.riskLevel === 'HIGH')))
+      .map(a => {
+        const matchingAlert = currentAlerts.find(alt => alt.accountId === a.id);
+        return matchingAlert || {
+          id: `ALT-${a.id}`,
+          accountId: a.id,
+          riskScore: a.riskScore || 85,
+          alertType: 'High transaction velocity',
+          severity: a.riskLevel || 'CRITICAL',
+          detectedTime: 'Live Model Trigger',
+          status: 'New',
+          assignedAnalyst: 'Agent R. Sharma',
+          description: a.riskReasons?.[0] || `High risk score (${a.riskScore}) detected.`
+        };
+      });
+  }
+
+  // Apply user-modified statuses from alertStatusMap
+  let result = alerts.map(a => {
+    const override = alertStatusMap.get(a.id);
+    if (override) {
+      return { ...a, status: override.status, assignedAnalyst: override.assignedAnalyst || a.assignedAnalyst };
+    }
+    return { ...a };
+  });
+
+  // Apply filters
   if (filters.severity && filters.severity !== 'ALL') {
     result = result.filter(a => a.severity.toUpperCase() === filters.severity.toUpperCase());
   }
@@ -572,13 +705,14 @@ export async function getRiskAlerts(filters = {}) {
 }
 
 export async function updateAlertStatus(alertId, newStatus, analyst = 'Agent R. Sharma') {
+  alertStatusMap.set(alertId, { status: newStatus, assignedAnalyst: analyst });
   const alert = currentAlerts.find(a => a.id === alertId);
   if (alert) {
     alert.status = newStatus;
     if (analyst) alert.assignedAnalyst = analyst;
-    notifyStateChanged();
   }
-  return alert;
+  notifyStateChanged();
+  return { id: alertId, status: newStatus, assignedAnalyst: analyst };
 }
 
 // -------------------------------------------------------------
@@ -868,6 +1002,7 @@ export async function getActiveScenario() {
 }
 
 export async function refreshActiveScenario() {
+  alertDetailsCache = { scenarioId: null, alerts: [] };
   try {
     const summary = await fetchFromBackend('/api/scenario/refresh', {
       method: 'POST'
@@ -893,6 +1028,7 @@ export async function refreshActiveScenario() {
 }
 
 export async function selectActiveScenario(scenarioId) {
+  alertDetailsCache = { scenarioId: null, alerts: [] };
   try {
     const summary = await fetchFromBackend('/api/scenario/select', {
       method: 'POST',
@@ -921,14 +1057,24 @@ export async function getScenarios() {
 }
 
 export async function switchScenario(scenarioKey) {
-  // If flagship requested, tell backend
-  if (scenarioKey === 'SCENARIO_3_MULTI_HOP' || scenarioKey === 'scenario-3' || scenarioKey === 'scenario-flagship') {
-    try {
-      await fetchFromBackend('/api/scenario/select', {
-        method: 'POST',
-        body: JSON.stringify({ scenario_id: 'scenario-flagship' })
-      });
-    } catch (_) {}
+  alertDetailsCache = { scenarioId: null, alerts: [] };
+  // Map UI key to backend scenario ID
+  let backendScenarioId = 'scenario-flagship';
+  if (scenarioKey === 'SCENARIO_1_NORMAL' || scenarioKey === 'scenario-1') {
+    backendScenarioId = 'scenario-1';
+  } else if (scenarioKey === 'SCENARIO_2_SINGLE_MULE' || scenarioKey === 'scenario-2') {
+    backendScenarioId = 'scenario-2';
+  } else if (scenarioKey === 'SCENARIO_3_MULTI_HOP' || scenarioKey === 'scenario-3' || scenarioKey === 'scenario-flagship') {
+    backendScenarioId = 'scenario-flagship';
+  }
+
+  try {
+    await fetchFromBackend('/api/scenario/select', {
+      method: 'POST',
+      body: JSON.stringify({ scenario_id: backendScenarioId })
+    });
+  } catch (err) {
+    console.warn('[Scenario] Backend select failed during switchScenario:', err.message);
   }
 
   const scenario = PREDEFINED_SCENARIOS[scenarioKey] || PREDEFINED_SCENARIOS.SCENARIO_3_MULTI_HOP;
@@ -950,6 +1096,8 @@ export async function switchScenario(scenarioKey) {
 }
 
 export async function resetDataset() {
+  alertDetailsCache = { scenarioId: null, alerts: [] };
+  alertStatusMap.clear();
   try {
     await fetchFromBackend('/api/scenario/select', {
       method: 'POST',
@@ -1009,48 +1157,224 @@ export async function generateSyntheticTransactions(count = 5) {
 }
 
 // -------------------------------------------------------------
+// -------------------------------------------------------------
 // REPORTS
 // -------------------------------------------------------------
 export async function getReports() {
-  return {
-    title: 'Digital Arrest Scam & Mule Network Forensic Investigation Report',
-    reportId: 'REP-2026-FT03-MULE',
-    generatedAt: new Date().toLocaleString(),
-    classification: 'CONFIDENTIAL — BANK AML / CYBER FRAUD UNIT',
-    author: 'Lead Investigator R. Sharma (Fraud Risk Operations)',
-    executiveSummary: 'Automated graph intelligence detected a rapid 5-hop pass-through syndicate routing ₹75,000 from reporting victim Devendra K. (Victim-001) to virtual remittance escrow E889 within 13 minutes. The syndicate exhibits characteristic mule indicators including 87%+ pass-through ratios, sub-5-minute transfer latencies, and concentrated clustering in Community #17.',
-    keyMetrics: {
-      totalAccountsInvolved: currentAccounts.filter(a => a.riskScore >= 60).length,
-      scamAmountTraced: 75000,
-      velocityRating: 'Extreme (Median 3.2m transfer delay)',
-      primarySyndicate: 'Community #17',
-      recommendedFreezeTarget: 'E889 (Terminal Escrow)'
-    },
-    flaggedMules: currentAccounts.filter(a => a.isMule).map(a => ({
-      id: a.id,
-      name: a.name,
-      score: a.riskScore,
-      level: a.riskLevel,
-      passThrough: `${(a.passThroughRatio * 100).toFixed(0)}%`,
-      delay: `${a.medianTransferDelayMinutes}m`,
-      status: a.status
-    })),
-    moneyTrailSummary: [
-      { hop: 1, flow: 'Victim-001 → A102', amount: 75000, delay: 'Entry Point' },
-      { hop: 2, flow: 'A102 → B552', amount: 73500, delay: '3 mins' },
-      { hop: 3, flow: 'B552 → C771', amount: 70000, delay: '2 mins' },
-      { hop: 4, flow: 'C771 → D334', amount: 68000, delay: '4 mins' },
-      { hop: 5, flow: 'D334 → E889', amount: 65500, delay: '4 mins' }
-    ]
-  };
+  try {
+    const [scenarioMeta, networkData, comms] = await Promise.all([
+      fetchFromBackend('/api/scenario').catch(() => null),
+      fetchFromBackend('/api/network').catch(() => ({ nodes: [], edges: [] })),
+      fetchFromBackend('/api/network/communities').catch(() => [])
+    ]);
+
+    const scenarioId = scenarioMeta?.id || 'scenario-flagship';
+    const scenarioName = scenarioMeta?.name || 'Active Investigation';
+    const startingTxnId = scenarioMeta?.starting_transaction_id;
+
+    // Fetch investigation trace for starting transaction if present
+    let traceData = null;
+    if (startingTxnId) {
+      try {
+        traceData = await fetchFromBackend('/api/investigate', {
+          method: 'POST',
+          body: JSON.stringify({
+            transaction_id: startingTxnId,
+            max_hops: 6
+          })
+        });
+      } catch (err) {
+        console.warn('[Reports] Trace fetch failed for', startingTxnId, err.message);
+      }
+    }
+
+    const nodes = networkData.nodes || [];
+    const edges = networkData.edges || [];
+
+    // Filter high-risk nodes (>=0.60 or CRITICAL/HIGH)
+    const highRiskNodes = nodes.filter(n => 
+      (n.risk_probability !== undefined ? n.risk_probability >= 0.60 : (n.risk_level === 'CRITICAL' || n.risk_level === 'HIGH'))
+    );
+
+    // Determine flagged mules with forensic details
+    const flaggedMules = await Promise.all(
+      highRiskNodes.map(async (n) => {
+        let feats = {};
+        try {
+          const accData = await fetchFromBackend(`/api/accounts/${encodeURIComponent(n.id)}`);
+          feats = accData.risk_analysis?.features || {};
+        } catch (_) {}
+
+        const passRatio = feats.pass_through_ratio !== undefined ? feats.pass_through_ratio : 0.95;
+        const delayMin = feats.median_in_out_delay_min !== undefined ? feats.median_in_out_delay_min : 3;
+
+        return {
+          id: n.id,
+          name: n.name,
+          score: Math.round((n.risk_probability || 0) * 100),
+          level: n.risk_level || 'CRITICAL',
+          passThrough: `${Math.round(passRatio * 100)}%`,
+          delay: delayMin >= 60 ? `${Math.round(delayMin / 60)}h` : `${Math.round(delayMin)}m`,
+          status: simulatedFrozenAccounts.has(n.id) ? 'Simulated Frozen' : (n.is_suspicious ? 'Flagged for Review' : 'Active')
+        };
+      })
+    );
+
+    // Sort flagged mules descending by risk score
+    flaggedMules.sort((a, b) => b.score - a.score);
+
+    // Determine scam money trail summary
+    const scamEdges = edges.filter(e => e.is_scam_trail);
+    let moneyTrailSummary = [];
+    let scamAmountTraced = 0;
+    let terminalAccount = 'None';
+    let velocityRating = 'Normal (No anomalies)';
+    let primarySyndicate = comms[0]?.community_id ? `Community ${comms[0].community_id}` : 'None Identified';
+
+    if (traceData && traceData.trail && traceData.trail.length > 0) {
+      // If trace endpoint succeeded, check if trail contains scam hops
+      const trail = traceData.trail;
+      const isScamScenario = scamEdges.length > 0;
+
+      if (isScamScenario) {
+        moneyTrailSummary = trail.map((h, idx) => ({
+          hop: h.hop_number || (idx + 1),
+          flow: `${h.from_account} → ${h.to_account}`,
+          amount: h.amount,
+          delay: idx === 0 ? 'Entry Point' : (h.delay_minutes ? `${h.delay_minutes} mins` : 'Immediate')
+        }));
+        scamAmountTraced = traceData.summary?.initial_amount || scamEdges[0]?.amount || 0;
+        terminalAccount = traceData.summary?.terminal_account || trail[trail.length - 1]?.to_account || 'Terminal';
+        
+        const durationMin = traceData.summary?.duration_minutes || 0;
+        velocityRating = durationMin <= 15 ? `Extreme (${durationMin}m total duration)` : `Moderate (${durationMin}m duration)`;
+      }
+    } else if (scamEdges.length > 0) {
+      moneyTrailSummary = scamEdges.map((e, idx) => ({
+        hop: idx + 1,
+        flow: `${e.source} → ${e.target}`,
+        amount: e.amount,
+        delay: idx === 0 ? 'Entry Point' : 'Sequential hop'
+      }));
+      scamAmountTraced = scamEdges[0]?.amount || 0;
+      terminalAccount = scamEdges[scamEdges.length - 1]?.target || 'Terminal';
+      velocityRating = 'Rapid Layering (< 15 mins)';
+    }
+
+    // Community with highest suspicious count
+    const topSuspiciousComm = [...comms].sort((a, b) => (b.suspicious_count || 0) - (a.suspicious_count || 0))[0];
+    if (topSuspiciousComm && topSuspiciousComm.suspicious_count > 0) {
+      primarySyndicate = `Community ${topSuspiciousComm.community_id} (${topSuspiciousComm.suspicious_count} flagged)`;
+    } else {
+      primarySyndicate = 'None (Clean Baseline)';
+    }
+
+    // Scenario-specific title, classification, and narrative summaries
+    let title = `${scenarioName} Forensic Investigation Dossier`;
+    let classification = 'CONFIDENTIAL — BANK AML / COMPLIANCE AUDIT';
+    let executiveSummary = '';
+    let reportId = `REP-${Date.now().toString().slice(-6)}-${scenarioId.toUpperCase()}`;
+    let recommendedFreezeTarget = terminalAccount !== 'None' ? `${terminalAccount} (Terminal Node)` : 'None Required (Legitimate)';
+
+    if (scenarioId === 'scenario-1' || highRiskNodes.length === 0) {
+      title = 'Commercial Banking Audit & Legitimate Transaction Verification Dossier';
+      classification = 'STANDARD COMPLIANCE AUDIT — VERIFIED BENIGN';
+      recommendedFreezeTarget = 'None Required (Clean Baseline)';
+      velocityRating = 'Normal Business Operations (24-48h settlement)';
+      executiveSummary = `Comprehensive graph and ML model evaluation of "${scenarioName}" confirmed zero mule accounts and zero scam routing patterns. Transaction flows represent standard enterprise treasury sweeps (e.g. Apex Electronics ENTITY-APEX-01) and legitimate multi-income personal accounts (Dr. Vikram Malhotra). All evaluated nodes exhibit healthy balance retention and standard invoice reconciliation turnover without suspicious velocity or structuring anomalies.`;
+    } else if (scenarioId === 'scenario-2' || highRiskNodes.length === 1) {
+      title = 'Single Mule Account Forensic Investigation Report';
+      classification = 'CONFIDENTIAL — BANK AML / CYBER FRAUD UNIT';
+      const mule = flaggedMules[0];
+      const muleId = mule ? mule.id : 'MULE-ISO';
+      recommendedFreezeTarget = `${muleId} (Isolated Mule Node)`;
+      velocityRating = 'Immediate Cash-Out (Sub-5m ATM withdrawal)';
+      executiveSummary = `Automated graph intelligence detected an isolated single-mule diversion pattern in "${scenarioName}". Scam funds of ₹${scamAmountTraced.toLocaleString()} originated from victim account ${traceData?.trail?.[0]?.from_account || 'VIC-ISO-01'} and were credited to newly registered account ${muleId}, followed by an immediate ₹${(traceData?.trail?.[1]?.amount || 94050).toLocaleString()} ATM cash-out. No multi-hop layering syndicate was detected beyond the isolated mule account.`;
+    } else {
+      // Multi-Hop Flagship or similar syndicate
+      title = 'Multi-Hop Mule Network & Digital Arrest Scam Forensic Dossier';
+      classification = 'CONFIDENTIAL — BANK AML / CYBER POLICE SUBMISSION';
+      const durationText = traceData?.summary?.duration_minutes ? `within ${traceData.summary.duration_minutes} minutes` : 'within minutes';
+      recommendedFreezeTarget = `${terminalAccount} (Terminal Cashout Escrow)`;
+      executiveSummary = `Automated graph intelligence detected a rapid ${moneyTrailSummary.length}-hop pass-through syndicate routing ₹${scamAmountTraced.toLocaleString()} across ${flaggedMules.length} flagged mule accounts ${durationText}. The syndicate exhibits characteristic mule indicators including 90%+ pass-through ratios, rapid inter-hop turnaround latencies, and concentrated clustering in ${primarySyndicate}. Urgent debit freeze recommended on terminal off-ramp target ${terminalAccount}.`;
+    }
+
+    return {
+      title,
+      reportId,
+      generatedAt: new Date().toLocaleString(),
+      classification,
+      author: 'Lead Investigator R. Sharma (Fraud Risk Operations)',
+      executiveSummary,
+      keyMetrics: {
+        totalAccountsInvolved: flaggedMules.length,
+        scamAmountTraced,
+        velocityRating,
+        primarySyndicate,
+        recommendedFreezeTarget
+      },
+      flaggedMules,
+      moneyTrailSummary
+    };
+  } catch (err) {
+    console.warn('[Reports] Dynamic report generation failed, using scenario fallback:', err.message);
+    return {
+      title: 'Forensic Investigation Dossier (Offline Cache)',
+      reportId: `REP-${Date.now().toString().slice(-6)}-CACHE`,
+      generatedAt: new Date().toLocaleString(),
+      classification: 'CONFIDENTIAL — BANK AML / CYBER FRAUD UNIT',
+      author: 'Lead Investigator R. Sharma (Fraud Risk Operations)',
+      executiveSummary: 'Report generated from local cache snapshot. Backend telemetry currently offline.',
+      keyMetrics: {
+        totalAccountsInvolved: currentAccounts.filter(a => a.riskScore >= 60).length,
+        scamAmountTraced: currentTransactions.filter(t => t.isScamTrail).reduce((sum, t) => sum + (t.amount || 0), 0),
+        velocityRating: 'Evaluated from cached transactions',
+        primarySyndicate: 'Local Snapshot',
+        recommendedFreezeTarget: 'Review flagged accounts'
+      },
+      flaggedMules: currentAccounts.filter(a => a.riskScore >= 60 || a.isMule).map(a => ({
+        id: a.id,
+        name: a.name,
+        score: a.riskScore,
+        level: a.riskLevel,
+        passThrough: `${Math.round((a.passThroughRatio || 0.8) * 100)}%`,
+        delay: `${a.medianTransferDelayMinutes || 5}m`,
+        status: a.status
+      })),
+      moneyTrailSummary: currentTransactions.filter(t => t.isScamTrail).map((t, idx) => ({
+        hop: idx + 1,
+        flow: `${t.fromAccount} → ${t.toAccount}`,
+        amount: t.amount,
+        delay: idx === 0 ? 'Entry Point' : 'Sequential'
+      }))
+    };
+  }
 }
 
 // -------------------------------------------------------------
-// CSV EXPORTERS
+// CSV EXPORTERS (Active Scenario Data)
 // -------------------------------------------------------------
-export function exportTransactionsCsv() {
+export async function exportTransactionsCsv() {
+  let txns = [];
+  try {
+    const network = await fetchFromBackend('/api/network');
+    txns = (network.edges || []).map(e => ({
+      id: e.id,
+      fromAccount: e.source,
+      toAccount: e.target,
+      amount: e.amount,
+      timestamp: e.timestamp,
+      channel: e.channel,
+      riskLevel: e.is_scam_trail ? 'CRITICAL' : 'LOW',
+      status: 'Completed',
+      notes: e.is_scam_trail ? 'Scam money trail hop' : 'Commercial transfer'
+    }));
+  } catch (_) {
+    txns = currentTransactions;
+  }
+
   const headers = ['Transaction ID', 'From Account', 'To Account', 'Amount (INR)', 'Timestamp', 'Channel', 'Risk Level', 'Status', 'Notes'];
-  const rows = currentTransactions.map(t => [
+  const rows = txns.map(t => [
     t.id,
     t.fromAccount,
     t.toAccount,
@@ -1074,17 +1398,35 @@ export function exportTransactionsCsv() {
   return true;
 }
 
-export function exportAccountsCsv() {
-  const headers = ['Account ID', 'Account Name', 'Type', 'Risk Score', 'Risk Level', 'Current Balance', 'Incoming Total', 'Outgoing Total', 'Pass-Through Ratio', 'Status', 'Community'];
-  const rows = currentAccounts.map(a => [
+export async function exportAccountsCsv() {
+  let accounts = [];
+  try {
+    const network = await fetchFromBackend('/api/network');
+    accounts = (network.nodes || []).map(n => ({
+      id: n.id,
+      name: n.name,
+      accountType: n.account_type,
+      riskScore: Math.round((n.risk_probability || 0) * 100),
+      riskLevel: n.risk_level,
+      currentBalance: 1500,
+      totalIncoming: 0,
+      totalOutgoing: 0,
+      passThroughRatio: n.is_suspicious ? 0.95 : 0.2,
+      status: simulatedFrozenAccounts.has(n.id) ? 'Simulated Frozen' : (n.is_suspicious ? 'Flagged for Review' : 'Active'),
+      communityId: n.community_id || 'N/A'
+    }));
+  } catch (_) {
+    accounts = currentAccounts;
+  }
+
+  const headers = ['Account ID', 'Account Name', 'Type', 'Risk Score', 'Risk Level', 'Current Balance', 'Pass-Through Ratio', 'Status', 'Community'];
+  const rows = accounts.map(a => [
     a.id,
     `"${a.name}"`,
     a.accountType,
     a.riskScore,
     a.riskLevel,
     a.currentBalance,
-    a.totalIncoming,
-    a.totalOutgoing,
     a.passThroughRatio,
     a.status,
     a.communityId

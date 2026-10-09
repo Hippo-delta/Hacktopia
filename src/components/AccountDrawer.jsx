@@ -91,6 +91,50 @@ export default function AccountDrawer({
               </ul>
             </div>
 
+            {/* Indian Identity & Business Context */}
+            <div className="bg-dark-950/70 p-3.5 rounded-lg border border-slate-800 space-y-2 text-[11px]">
+              <span className="font-semibold text-slate-300 block">Identity & Context Profile</span>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Identity Verification:</span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                  account.identity_verification_status?.includes('VERIFIED') 
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                }`}>
+                  {account.identity_verification_status || 'VERIFIED_INDIVIDUAL'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Business Registration:</span>
+                <span className="font-mono text-slate-200">
+                  {account.business_registered ? 'Registered Entity' : 'Individual / Unregistered'}
+                </span>
+              </div>
+              {account.gstin_present && account.gstin_number && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">GSTIN:</span>
+                  <span className="font-mono text-indigo-400 font-semibold">{account.gstin_number}</span>
+                </div>
+              )}
+              {account.business_category && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Category:</span>
+                  <span className="font-mono text-slate-200 capitalize">{account.business_category.replace(/_/g, ' ')}</span>
+                </div>
+              )}
+              {account.entity_id && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Linked Entity:</span>
+                  <span className="font-mono text-purple-400">{account.entity_id}</span>
+                </div>
+              )}
+              {account.expected_activity_profile && (
+                <div className="pt-1 border-t border-slate-800 text-[10px] text-slate-400">
+                  <span className="text-slate-500">Expected Profile:</span> {account.expected_activity_profile}
+                </div>
+              )}
+            </div>
+
             {/* Additional Metrics */}
             <div className="space-y-2 bg-dark-950/60 p-3.5 rounded-lg border border-slate-800 text-slate-400 text-[11px]">
               <div className="flex justify-between">

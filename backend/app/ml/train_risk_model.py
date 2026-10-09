@@ -26,7 +26,7 @@ RANDOM_SEED = 2026
 MODEL_DIR = Path(__file__).resolve().parent / "saved_models"
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
-# Explicitly verified clean feature list (strictly behavioral/transactional)
+# Explicitly verified clean feature list (behavioral, graph topology, and identity context)
 FEATURE_COLUMNS: List[str] = [
     "incoming_count",
     "outgoing_count",
@@ -47,7 +47,13 @@ FEATURE_COLUMNS: List[str] = [
     "min_in_out_delay_min",
     "structuring_ratio",
     "network_degree",
-    "account_age_days"
+    "account_age_days",
+    # Safe contextual & behavioral consistency features
+    "business_registered",
+    "gstin_present",
+    "identity_verified",
+    "same_entity_transfer_ratio",
+    "recurring_counterparty_ratio"
 ]
 
 
