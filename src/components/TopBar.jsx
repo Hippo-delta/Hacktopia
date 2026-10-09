@@ -11,7 +11,6 @@ import {
   Shield,
   Clock,
   ArrowRight,
-  LogOut
   RefreshCw,
   Sparkles
 } from 'lucide-react';
@@ -22,9 +21,6 @@ export default function TopBar({
   onOpenNotifications, 
   onOpenHelp, 
   onOpenProfile, 
-  onLogout,
-  currentUser,
-  activeScenarioName = 'Scenario 3: Multi-Hop Scam Network',
   onRefreshScenario,
   isRefreshing = false,
   activeScenarioName = 'Flagship: Multi-Hop Network (TXN-84921)',
@@ -130,13 +126,6 @@ export default function TopBar({
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-3">
-        {/* Active Scenario Indicator */}
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-medium">
-          <Database className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="font-mono text-[11px] truncate max-w-[170px]">{activeScenarioName}</span>
-        </div>
-
       <div className="flex items-center gap-2.5">
         {/* Active Scenario Indicator */}
         <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-medium">
@@ -215,26 +204,6 @@ export default function TopBar({
         <button
           onClick={onOpenProfile}
           className="flex items-center gap-2 p-1.5 rounded-lg bg-dark-950 border border-slate-800 text-slate-300 hover:border-slate-700 transition pl-2"
-          title="Analyst Profile"
-        >
-          <div className="w-6 h-6 rounded-full bg-indigo-600/30 text-indigo-300 flex items-center justify-center text-xs font-bold border border-indigo-500/40">
-            {currentUser?.email ? currentUser.email.slice(0, 2).toUpperCase() : 'RS'}
-          </div>
-          <span className="text-xs font-medium text-slate-200 hidden sm:inline">
-            {currentUser?.name || 'R. Sharma'}
-          </span>
-        </button>
-
-        {/* Direct Logout Button */}
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            className="p-2 rounded-lg bg-dark-950 border border-slate-800 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition"
-            title="Sign Out / Lock Session"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        )}
         >
           <div className="w-6 h-6 rounded-full bg-indigo-600/30 text-indigo-300 flex items-center justify-center text-xs font-bold border border-indigo-500/40">
             RS
