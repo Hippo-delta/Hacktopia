@@ -38,10 +38,10 @@ export default function Sidebar({ activeTab, onSelectTab, alertsCount = 12, case
           </div>
           <div>
             <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
-              MONEY TRAIL
-              <span className="text-[10px] font-mono px-1 py-0.2 bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/30">FT-03</span>
+              PABLO
+              <span className="text-[10px] font-mono px-1 py-0.2 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">FT-03</span>
             </h1>
-            <p className="text-[10px] text-slate-400 tracking-wide font-medium">Mule Hunter Platform</p>
+            <p className="text-[10px] text-slate-400 tracking-wide font-medium">Financial Intelligence Platform</p>
           </div>
         </div>
 

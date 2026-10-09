@@ -11,6 +11,7 @@ import HelpModal from './components/HelpModal';
 import ProfileModal from './components/ProfileModal';
 
 // Pages
+import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import TraceTransactionPage from './pages/TraceTransactionPage';
 import AccountInvestigationPage from './pages/AccountInvestigationPage';
@@ -21,6 +22,9 @@ import ReportsPage from './pages/ReportsPage';
 import DataManagementPage from './pages/DataManagementPage';
 import CaseManagementPage from './pages/CaseManagementPage';
 import SettingsPage from './pages/SettingsPage';
+
+// Auth Config
+import { AUTH_STORAGE_KEY } from './config/authConfig';
 
 // API & Services
 import { 
@@ -38,6 +42,15 @@ import {
 } from './services/api';
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeTraceTarget, setActiveTraceTarget] = useState('TXN-84921');
   const [activeAccountTarget, setActiveAccountTarget] = useState('A102');
@@ -111,10 +124,31 @@ export default function App() {
   };
 
   useEffect(() => {
-    refreshTelemetry();
-    const unsub = subscribeToDataChanges(refreshTelemetry);
-    return () => unsub();
-  }, []);
+    if (currentUser) {
+      refreshTelemetry();
+      const unsub = subscribeToDataChanges(refreshTelemetry);
+      return () => unsub();
+    }
+  }, [currentUser]);
+
+  const handleLogin = (userData) => {
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+    } catch (e) {
+      console.error('Failed to store auth session:', e);
+    }
+    setCurrentUser(userData);
+    setActiveTab('dashboard');
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch (e) {
+      console.error('Failed to clear auth session:', e);
+    }
+    setCurrentUser(null);
+  };
 
   // Navigation handlers
   const handleNavigateToAccount = (accountId) => {
@@ -184,6 +218,11 @@ export default function App() {
     }
   };
 
+  // If user is not authenticated, render the LoginPage
+  if (!currentUser) {
+    return <LoginPage onLoginSuccess={handleLogin} />;
+  }
+
   return (
     <div className="flex h-screen bg-[#070d19] text-slate-100 overflow-hidden font-sans">
       {/* Global Left Sidebar */}
@@ -203,6 +242,7 @@ export default function App() {
           onOpenHelp={() => setIsHelpModalOpen(true)}
           onOpenProfile={() => setIsProfileModalOpen(true)}
           onRefreshScenario={handleRefreshScenario}
+          onLogout={handleLogout}
           isRefreshing={isRefreshingScenario}
           activeScenarioName={activeScenario ? activeScenario.name : 'Flagship: Multi-Hop (TXN-84921)'}
           unreadAlertsCount={alerts.filter(a => a.status === 'New').length}
@@ -360,6 +400,7 @@ export default function App() {
       <ProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
+        onLogout={handleLogout}
       />
     </div>
   );

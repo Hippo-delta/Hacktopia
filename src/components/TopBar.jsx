@@ -12,7 +12,8 @@ import {
   Clock,
   ArrowRight,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  LogOut
 } from 'lucide-react';
 import { formatCurrency, getRiskColorClass } from '../utils/formatters';
 
@@ -22,6 +23,7 @@ export default function TopBar({
   onOpenHelp, 
   onOpenProfile, 
   onRefreshScenario,
+  onLogout,
   isRefreshing = false,
   activeScenarioName = 'Flagship: Multi-Hop Network (TXN-84921)',
   unreadAlertsCount = 6
@@ -205,11 +207,22 @@ export default function TopBar({
           onClick={onOpenProfile}
           className="flex items-center gap-2 p-1.5 rounded-lg bg-dark-950 border border-slate-800 text-slate-300 hover:border-slate-700 transition pl-2"
         >
-          <div className="w-6 h-6 rounded-full bg-indigo-600/30 text-indigo-300 flex items-center justify-center text-xs font-bold border border-indigo-500/40">
+          <div className="w-6 h-6 rounded-full bg-blue-600/30 text-blue-300 flex items-center justify-center text-xs font-bold border border-blue-500/40">
             RS
           </div>
           <span className="text-xs font-medium text-slate-200 hidden sm:inline">R. Sharma</span>
         </button>
+
+        {/* Sign Out Button */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="p-2 rounded-lg bg-dark-950 border border-slate-800 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition"
+            title="Sign Out of PABLO"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </header>
   );

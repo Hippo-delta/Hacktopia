@@ -240,7 +240,7 @@ export default function ReportsPage({ onNavigateToAccount, onNavigateToTrace }) 
           <div className="space-y-1">
             <span className="font-semibold text-slate-300 block">System Verification Statement:</span>
             <p className="text-[11px] text-slate-400 max-w-md">
-              Report compiled through Money Trail Hunter Graph Heuristic Engine (FT-03). All data presented is deterministic synthetic simulation for the Hackatopia 2026 hackathon.
+              Report compiled through PABLO Financial Intelligence & Graph Heuristic Engine (FT-03). All data presented is deterministic synthetic simulation for the Hackatopia 2026 hackathon.
             </p>
           </div>
 
