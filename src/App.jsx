@@ -21,7 +21,6 @@ import ReportsPage from './pages/ReportsPage';
 import DataManagementPage from './pages/DataManagementPage';
 import CaseManagementPage from './pages/CaseManagementPage';
 import SettingsPage from './pages/SettingsPage';
-import LoginPage from './pages/LoginPage';
 
 // API & Services
 import { 
@@ -39,35 +38,6 @@ import {
 } from './services/api';
 
 export default function App() {
-  // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('mth_auth') === 'true' || sessionStorage.getItem('mth_auth') === 'true';
-  });
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('mth_user') || sessionStorage.getItem('mth_user') || 'null');
-    } catch {
-      return null;
-    }
-  });
-
-  const handleLogin = (user) => {
-    setIsAuthenticated(true);
-    setCurrentUser(user);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('mth_auth');
-    localStorage.removeItem('mth_user');
-    sessionStorage.removeItem('mth_auth');
-    sessionStorage.removeItem('mth_user');
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-  };
-
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [activeTraceTarget, setActiveTraceTarget] = useState('TXN-84921');
-  const [activeAccountTarget, setActiveAccountTarget] = useState('A102');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeTraceTarget, setActiveTraceTarget] = useState('TXN-84921');
   const [activeAccountTarget, setActiveAccountTarget] = useState('A102');
@@ -96,10 +66,6 @@ export default function App() {
   // Load telemetry
   const refreshTelemetry = async () => {
     try {
-      const [al, cs, accs] = await Promise.all([
-        getRiskAlerts(),
-        getCases(),
-        getAllAccounts()
       const [al, cs, accs, sc] = await Promise.all([
         getRiskAlerts(),
         getCases(),
@@ -218,10 +184,6 @@ export default function App() {
     }
   };
 
-  if (!isAuthenticated) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
-
   return (
     <div className="flex h-screen bg-[#070d19] text-slate-100 overflow-hidden font-sans">
       {/* Global Left Sidebar */}
@@ -240,8 +202,6 @@ export default function App() {
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           onOpenHelp={() => setIsHelpModalOpen(true)}
           onOpenProfile={() => setIsProfileModalOpen(true)}
-          onLogout={handleLogout}
-          currentUser={currentUser}
           onRefreshScenario={handleRefreshScenario}
           isRefreshing={isRefreshingScenario}
           activeScenarioName={activeScenario ? activeScenario.name : 'Flagship: Multi-Hop (TXN-84921)'}
@@ -400,8 +360,6 @@ export default function App() {
       <ProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
-        onLogout={handleLogout}
-        currentUser={currentUser}
       />
     </div>
   );
