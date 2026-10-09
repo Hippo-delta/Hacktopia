@@ -67,11 +67,83 @@ export default function NetworkGraph({
     });
 
     // Fallback for any other nodes in circle
+  // Position nodes nicely using a deterministic, adaptive flow layout
+  const [nodePositions, setNodePositions] = useState({});
+
+  useEffect(() => {
+    if (!nodes || nodes.length === 0) return;
+
+    const positions = {};
+    const width = 800;
+    const height = 500;
+    const centerY = height / 2;
+
+    // Detect trail chain order from scam edges if available
+    const scamEdges = (edges || []).filter(e => e.isScamTrail || e.riskLevel === 'CRITICAL');
+    const trailOrder = [];
+    const inDegrees = {};
+    const nextHops = {};
+
+    scamEdges.forEach(e => {
+      inDegrees[e.target] = (inDegrees[e.target] || 0) + 1;
+      nextHops[e.source] = e.target;
+    });
+
+    // Find trail roots (nodes with no incoming scam edges)
+    const roots = scamEdges.map(e => e.source).filter(s => !inDegrees[s]);
+    const visited = new Set();
+    let curr = roots[0] || (scamEdges[0]?.source);
+
+    while (curr && !visited.has(curr)) {
+      visited.add(curr);
+      trailOrder.push(curr);
+      curr = nextHops[curr];
+    }
+    // Add any remaining scam nodes
+    scamEdges.forEach(e => {
+      if (!visited.has(e.source)) { visited.add(e.source); trailOrder.push(e.source); }
+      if (!visited.has(e.target)) { visited.add(e.target); trailOrder.push(e.target); }
+    });
+
+    // Lay out scam trail horizontally across the center (Wave path)
+    const trailCount = trailOrder.length;
+    if (trailCount > 0) {
+      const stepX = Math.min(140, Math.max(90, 600 / Math.max(1, trailCount - 1)));
+      const startX = Math.max(80, (width - (trailCount - 1) * stepX) / 2);
+
+      trailOrder.forEach((id, idx) => {
+        const x = startX + idx * stepX;
+        const y = centerY + Math.sin(idx * 0.9) * 45 - 10;
+        positions[id] = { x, y };
+      });
+    }
+
+    // Identify non-scam nodes (benign merchants, normal peers)
+    const nonTrailNodes = nodes.filter(n => !positions[n.id]);
+    const benignMerchants = nonTrailNodes.filter(n => (n.accountType || '').toLowerCase().includes('merch') || (n.name || '').toLowerCase().includes('mart') || (n.name || '').toLowerCase().includes('grocer'));
+    const benignRetail = nonTrailNodes.filter(n => !benignMerchants.includes(n));
+
+    // Position merchants along upper orbit
+    benignMerchants.forEach((n, idx) => {
+      const x = 200 + idx * 160;
+      const y = 95 + (idx % 2 === 0 ? -20 : 20);
+      positions[n.id] = { x, y };
+    });
+
+    // Position other benign peers along bottom orbit
+    benignRetail.forEach((n, idx) => {
+      const x = 180 + idx * 150;
+      const y = height - 90 + (idx % 2 === 0 ? 15 : -15);
+      positions[n.id] = { x, y };
+    });
+
+    // Fallback circular layout for any remaining unplaced nodes
     nodes.forEach((n, i) => {
       if (!positions[n.id]) {
         const angle = (i / Math.max(1, nodes.length)) * 2 * Math.PI;
         positions[n.id] = {
           x: centerX + Math.cos(angle) * 260,
+          x: width / 2 + Math.cos(angle) * 250,
           y: centerY + Math.sin(angle) * 160
         };
       }
@@ -79,6 +151,7 @@ export default function NetworkGraph({
 
     setNodePositions(positions);
   }, [nodes]);
+  }, [nodes, edges]);
 
   // Handle node drag
   const [draggedNodeId, setDraggedNodeId] = useState(null);

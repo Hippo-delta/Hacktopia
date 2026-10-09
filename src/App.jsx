@@ -33,6 +33,8 @@ import {
   addEvidenceToCase, 
   simulateFreezeAccount, 
   getAllAccounts,
+  getActiveScenario,
+  refreshActiveScenario,
   subscribeToDataChanges 
 } from './services/api';
 
@@ -66,6 +68,11 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeTraceTarget, setActiveTraceTarget] = useState('TXN-84921');
   const [activeAccountTarget, setActiveAccountTarget] = useState('A102');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTraceTarget, setActiveTraceTarget] = useState('TXN-84921');
+  const [activeAccountTarget, setActiveAccountTarget] = useState('A102');
+  const [activeScenario, setActiveScenario] = useState(null);
+  const [isRefreshingScenario, setIsRefreshingScenario] = useState(false);
 
   // Shared state
   const [alerts, setAlerts] = useState([]);
@@ -93,12 +100,47 @@ export default function App() {
         getRiskAlerts(),
         getCases(),
         getAllAccounts()
+      const [al, cs, accs, sc] = await Promise.all([
+        getRiskAlerts(),
+        getCases(),
+        getAllAccounts(),
+        getActiveScenario()
       ]);
       setAlerts(al);
       setCases(cs);
       setAllAccounts(accs);
+      if (sc) {
+        setActiveScenario(sc);
+        if (sc.starting_transaction_id && activeTraceTarget === 'TXN-84921') {
+          setActiveTraceTarget(sc.starting_transaction_id);
+        }
+        if (sc.starting_account_id && activeAccountTarget === 'A102') {
+          setActiveAccountTarget(sc.starting_account_id);
+        }
+      }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleRefreshScenario = async () => {
+    setIsRefreshingScenario(true);
+    try {
+      const newSc = await refreshActiveScenario();
+      if (newSc) {
+        setActiveScenario(newSc);
+        if (newSc.starting_transaction_id) {
+          setActiveTraceTarget(newSc.starting_transaction_id);
+        }
+        if (newSc.starting_account_id) {
+          setActiveAccountTarget(newSc.starting_account_id);
+        }
+      }
+      await refreshTelemetry();
+    } catch (e) {
+      console.error('Failed to refresh scenario:', e);
+    } finally {
+      setIsRefreshingScenario(false);
     }
   };
 
@@ -200,6 +242,9 @@ export default function App() {
           onOpenProfile={() => setIsProfileModalOpen(true)}
           onLogout={handleLogout}
           currentUser={currentUser}
+          onRefreshScenario={handleRefreshScenario}
+          isRefreshing={isRefreshingScenario}
+          activeScenarioName={activeScenario ? activeScenario.name : 'Flagship: Multi-Hop (TXN-84921)'}
           unreadAlertsCount={alerts.filter(a => a.status === 'New').length}
         />
 

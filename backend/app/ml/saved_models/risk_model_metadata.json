@@ -1,0 +1,241 @@
+{
+  "model_name": "AccountRiskRandomForest",
+  "model_version": "1.0.0",
+  "model_type": "RandomForestClassifier",
+  "is_calibrated": false,
+  "calibration_method": "none",
+  "random_seed": 2026,
+  "hyperparameters": {
+    "n_estimators": 100,
+    "max_depth": 6,
+    "min_samples_split": 4,
+    "min_samples_leaf": 2,
+    "class_weight": "balanced"
+  },
+  "features": [
+    "incoming_count",
+    "outgoing_count",
+    "total_txns",
+    "unique_senders",
+    "unique_receivers",
+    "total_incoming_amount",
+    "total_outgoing_amount",
+    "net_flow_amount",
+    "avg_incoming_amount",
+    "avg_outgoing_amount",
+    "avg_txn_amount",
+    "pass_through_ratio",
+    "txn_velocity_per_hour",
+    "avg_time_between_txns_min",
+    "avg_in_out_delay_min",
+    "median_in_out_delay_min",
+    "min_in_out_delay_min",
+    "structuring_ratio",
+    "network_degree",
+    "account_age_days"
+  ],
+  "decision_threshold": 0.5,
+  "validation_metrics": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "roc_auc": 1.0,
+    "confusion_matrix": [
+      [
+        23,
+        0
+      ],
+      [
+        0,
+        7
+      ]
+    ]
+  },
+  "test_metrics": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "roc_auc": 1.0,
+    "confusion_matrix": [
+      [
+        27,
+        0
+      ],
+      [
+        0,
+        14
+      ]
+    ]
+  },
+  "per_class_test_results": {
+    "merchant": {
+      "total_accounts": 6,
+      "predicted_suspicious": 0,
+      "predicted_benign": 6,
+      "detection_rate": 0.0,
+      "mean_risk_probability": 0.0254
+    },
+    "mule-like": {
+      "total_accounts": 10,
+      "predicted_suspicious": 10,
+      "predicted_benign": 0,
+      "detection_rate": 1.0,
+      "mean_risk_probability": 0.9697
+    },
+    "normal": {
+      "total_accounts": 17,
+      "predicted_suspicious": 0,
+      "predicted_benign": 17,
+      "detection_rate": 0.0,
+      "mean_risk_probability": 0.0021
+    },
+    "structuring": {
+      "total_accounts": 4,
+      "predicted_suspicious": 4,
+      "predicted_benign": 0,
+      "detection_rate": 1.0,
+      "mean_risk_probability": 0.9971
+    },
+    "victim": {
+      "total_accounts": 4,
+      "predicted_suspicious": 0,
+      "predicted_benign": 4,
+      "detection_rate": 0.0,
+      "mean_risk_probability": 0.0273
+    }
+  },
+  "top_features": [
+    {
+      "rank": 1,
+      "feature": "account_age_days",
+      "importance": 0.2447
+    },
+    {
+      "rank": 2,
+      "feature": "avg_incoming_amount",
+      "importance": 0.1345
+    },
+    {
+      "rank": 3,
+      "feature": "unique_senders",
+      "importance": 0.1175
+    },
+    {
+      "rank": 4,
+      "feature": "total_txns",
+      "importance": 0.1137
+    },
+    {
+      "rank": 5,
+      "feature": "network_degree",
+      "importance": 0.0966
+    },
+    {
+      "rank": 6,
+      "feature": "incoming_count",
+      "importance": 0.0782
+    },
+    {
+      "rank": 7,
+      "feature": "unique_receivers",
+      "importance": 0.0619
+    },
+    {
+      "rank": 8,
+      "feature": "avg_txn_amount",
+      "importance": 0.0549
+    },
+    {
+      "rank": 9,
+      "feature": "outgoing_count",
+      "importance": 0.0337
+    },
+    {
+      "rank": 10,
+      "feature": "total_incoming_amount",
+      "importance": 0.0195
+    }
+  ],
+  "demo_predictions": {
+    "Victim-001": {
+      "account_id": "Victim-001",
+      "behavior_class": "victim",
+      "ground_truth_suspicious": 0,
+      "predicted_class": "BENIGN",
+      "model_risk_probability": 0.0908,
+      "key_factors": {
+        "velocity": 0.09,
+        "pass_through": 0.0,
+        "structuring_ratio": 0.0,
+        "median_delay_min": 1440.0
+      }
+    },
+    "A102": {
+      "account_id": "A102",
+      "behavior_class": "mule-like",
+      "ground_truth_suspicious": 1,
+      "predicted_class": "SUSPICIOUS",
+      "model_risk_probability": 0.9735,
+      "key_factors": {
+        "velocity": 0.59,
+        "pass_through": 0.58,
+        "structuring_ratio": 0.0,
+        "median_delay_min": 2.7
+      }
+    },
+    "B552": {
+      "account_id": "B552",
+      "behavior_class": "mule-like",
+      "ground_truth_suspicious": 1,
+      "predicted_class": "SUSPICIOUS",
+      "model_risk_probability": 0.9835,
+      "key_factors": {
+        "velocity": 0.75,
+        "pass_through": 0.49,
+        "structuring_ratio": 0.0,
+        "median_delay_min": 2.1
+      }
+    },
+    "C771": {
+      "account_id": "C771",
+      "behavior_class": "mule-like",
+      "ground_truth_suspicious": 1,
+      "predicted_class": "SUSPICIOUS",
+      "model_risk_probability": 0.9335,
+      "key_factors": {
+        "velocity": 0.42,
+        "pass_through": 0.35,
+        "structuring_ratio": 0.0,
+        "median_delay_min": 89.9
+      }
+    },
+    "D334": {
+      "account_id": "D334",
+      "behavior_class": "mule-like",
+      "ground_truth_suspicious": 1,
+      "predicted_class": "SUSPICIOUS",
+      "model_risk_probability": 0.815,
+      "key_factors": {
+        "velocity": 0.27,
+        "pass_through": 0.35,
+        "structuring_ratio": 0.0,
+        "median_delay_min": 4.0
+      }
+    },
+    "E889": {
+      "account_id": "E889",
+      "behavior_class": "mule-like",
+      "ground_truth_suspicious": 1,
+      "predicted_class": "SUSPICIOUS",
+      "model_risk_probability": 1.0,
+      "key_factors": {
+        "velocity": 0.24,
+        "pass_through": 0.19,
+        "structuring_ratio": 1.0,
+        "median_delay_min": 813.0
+      }
+    }
+  }
+}

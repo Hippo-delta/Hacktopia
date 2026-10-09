@@ -12,6 +12,8 @@ import {
   Clock,
   ArrowRight,
   LogOut
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 import { formatCurrency, getRiskColorClass } from '../utils/formatters';
 
@@ -23,6 +25,9 @@ export default function TopBar({
   onLogout,
   currentUser,
   activeScenarioName = 'Scenario 3: Multi-Hop Scam Network',
+  onRefreshScenario,
+  isRefreshing = false,
+  activeScenarioName = 'Flagship: Multi-Hop Network (TXN-84921)',
   unreadAlertsCount = 6
 }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -132,6 +137,28 @@ export default function TopBar({
           <span className="font-mono text-[11px] truncate max-w-[170px]">{activeScenarioName}</span>
         </div>
 
+      <div className="flex items-center gap-2.5">
+        {/* Active Scenario Indicator */}
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-medium">
+          <Database className="w-3.5 h-3.5 text-indigo-400" />
+          <span className="font-mono text-[11px] truncate max-w-[170px]" title={activeScenarioName}>
+            {activeScenarioName}
+          </span>
+        </div>
+
+        {/* Global One-Click Scenario Refresh / New Investigation */}
+        {onRefreshScenario && (
+          <button
+            onClick={onRefreshScenario}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition disabled:opacity-60"
+            title="Generate a new coherent synthetic investigation scenario"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isRefreshing ? 'Generating...' : 'New Investigation'}</span>
+          </button>
+        )}
+
         {/* Date / Time Filter Dropdown */}
         <div className="relative">
           <button
@@ -208,6 +235,12 @@ export default function TopBar({
             <LogOut className="w-4 h-4" />
           </button>
         )}
+        >
+          <div className="w-6 h-6 rounded-full bg-indigo-600/30 text-indigo-300 flex items-center justify-center text-xs font-bold border border-indigo-500/40">
+            RS
+          </div>
+          <span className="text-xs font-medium text-slate-200 hidden sm:inline">R. Sharma</span>
+        </button>
       </div>
     </header>
   );

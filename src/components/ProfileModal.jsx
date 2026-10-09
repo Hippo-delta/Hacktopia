@@ -2,6 +2,9 @@ import React from 'react';
 import { User, X, Shield, Key, Building2, CheckCircle2, LogOut } from 'lucide-react';
 
 export default function ProfileModal({ isOpen, onClose, onLogout, currentUser }) {
+import { User, X, Shield, Key, Building2, CheckCircle2 } from 'lucide-react';
+
+export default function ProfileModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
@@ -66,6 +69,10 @@ export default function ProfileModal({ isOpen, onClose, onLogout, currentUser })
             <button
               onClick={onClose}
               className="px-4 py-2 rounded-lg bg-dark-800 hover:bg-slate-800 text-white font-medium text-xs transition ml-auto"
+          <div className="pt-2 flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg bg-dark-800 hover:bg-slate-800 text-white font-medium text-xs transition"
             >
               Close
             </button>
