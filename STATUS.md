@@ -1,15 +1,18 @@
 # Project Status
 
 ## Current Phase
-Editorial Case-File Design Implementation Complete
+Full Prototype & Authentication Integration Completed
 
 ## Current Progress
-- Re-architected interface into an investigator's case dossier (warm `#F4F1EA` paper background, `#141414` ink-black typography, and single `#E8452C` vermilion accent).
-- Editorial typography pairing implemented: Fraunces (display serif with custom optical sizing & italic emphasis) + Instrument Sans (grotesk).
-- Asymmetric 55/45 two-column layout with bold headline: *"Follow the money. Find the mule."*
-- Dynamic hand-drawn money trail SVG implemented with splitting and rejoining paths, terminating at a vermilion target dot, animated once across 1.5s.
-- Tactile physical UI interactions built: flat offset block shadow (`4px 4px 0 #141414`), button hover displacement (`translate(2px, 2px)` with shadow collapse), bottom-edge progress bar with `"Checking..."` state, and custom vermilion square checkbox.
-- Inline plain-language errors, `"Those details don't match our records."` failed login notice, and password text toggle ("Show"/"Hide") active.
+- Restored complete fraud-investigation software suite (`src/`, `components/`, `pages/`, `services/`, `data/`, `utils/`, `package.json`, `tailwind.config.js`, `vite.config.js`) into `C:\hackathon\Hacktopia`.
+- Created React `LoginPage.jsx` component faithful to the editorial case-file design ("Every Transaction Leaves a Trail", Fraunces / Instrument Sans, hand-drawn money trail SVG, vermilion accent).
+- Integrated authentication guard into `src/App.jsx`:
+  - Default view is `LoginPage`.
+  - Authenticated view unlocks full investigation suite (Dashboard, Network Analysis, Tracing, Alerts, Cases, etc.).
+  - Integrated dummy credentials: `yit09@gmail.com` / `123456`.
+  - Added Sign Out action in `TopBar.jsx` and `ProfileModal.jsx`.
+- Preserved standalone gateway in `login.html`, `styles.css`, and `app.js` with redirection to `index.html`.
+- Updated documentation in `README.md`.
 
 ## Current Blockers
-- None. Fully runnable and launched in default browser.
+- None.

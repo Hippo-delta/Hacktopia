@@ -133,10 +133,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (result.success) {
         btnText.textContent = 'Verified';
+        localStorage.setItem('mth_auth', 'true');
+        localStorage.setItem('mth_user', JSON.stringify({ email: email.trim(), name: 'Analyst Yit' }));
         setTimeout(() => {
-          alert('Access authorized. Opening investigative case dossier...');
           setLoadingState(false);
-        }, 400);
+          window.location.href = 'index.html';
+        }, 450);
       } else {
         throw new Error('AUTH_FAILED');
       }
